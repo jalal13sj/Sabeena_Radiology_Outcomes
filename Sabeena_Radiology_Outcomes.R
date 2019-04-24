@@ -74,12 +74,75 @@ describe(radio_tidy)
 str(radio_tidy)
 
 #need to set int for cats
-
+radio_tidy$ctas <- as.factor(radio_tidy$ctas)
+radio_tidy$imaging <- as.factor(radio_tidy$imaging)
+radio_tidy$todseen <- as.factor(radio_tidy$todseen)
+radio_tidy$trauma <- as.factor(radio_tidy$trauma)
+radio_tidy$group <- as.factor(radio_tidy$group)
+radio_tidy$adm <- as.factor(radio_tidy$adm)
 
 #now how many missing
 85916/(85916+295499)
 
 #explore a bit more, some graphs too
+describe(radio_tidy)
+
+library(ggplot2)
+library(GGally)
+
+ggplot(data = radio_tidy, aes(x = mdex, color = group, fill = group)) + geom_histogram(binwidth = 200, position = "dodge")
+#looks like poisson, looks like group 1 and 2 have extreme observations
+
+ggplot(data = radio_tidy, aes(x = group, y = mdex)) + geom_boxplot()
+#looks like both have extreme values, maybe more in group 2
+
+#check to see # of obs in each group, gorup 2 has 3337 more observation
+nrow(radio_tidy[radio_tidy$group == 1, ]) - nrow(radio_tidy[radio_tidy$group == 2, ])
+
+#check how many mdex are NA, there are 97,352 NAs, that's 25.5% of them
+sum(is.na(radio_tidy$mdex))/nrow(radio_tidy)
+
+#check to see how many group NAs, there are 85,916, that's 22.5% of them
+sum(is.na(radio_tidy$group))/nrow(radio_tidy)
+
+#to look at all relationships, this is a slow one so I've #'ed it out
+#ggpairs(radio_tidy)
+
+#####missing data below
+#check some regressions, missing data
+simple.lm <- lm(data = radio_tidy, mdex ~ group)
+summary(simple.lm)
+confint(simple.lm)
+#it says that group 2 has a redution in time from 16 to 11 minutes less (PE = 14), average for group 1 is 343
+
+#throw all variables in there and see what we get (there is missing data)
+all.multi.lm <- lm(data = radio_tidy, mdex ~ . - mdex)
+summary(all.multi.lm)
+confint(all.multi.lm)
+#it actually flips the mdex.....though there is a lot of missing data
+
+#look at BIC model selection 
+library(BMA)
+
+#was messing up, tried to split the y and x, but they have differing complete cases, so I just removed all of them. Will obviously impute data later, but just checking it out
+radio_complete_only <- radio_tidy[complete.cases(radio_tidy), ]
+sum(complete.cases(radio_complete_only))
+nrow(radio_complete_only)
+r_t_p <- radio_complete_only[ , -3]
+nrow(r_t_p)
+
+#put the nbest to a high number hoping to get more models in the output, but they didn't, so maybe I didn't do it right.
+#bic_out <- bicreg(x = r_t_p, y = radio_complete_only$mdex, nbest = 1000000)
+summary(bic_out)
+#this is just to see which models look promising, even though there is a lot of missing data.  
+
+bic_out$mle
+
+
+#make a summary stat table? put means, medians, IQR, and % missing data
+
+#simple imputation? Can't really impute the group, can I 
+
 
 
 
@@ -120,5 +183,6 @@ head(radio_tidy3)
 describe(radio_tidy3)
 str(radio_tidy3)
 
+#compare, they are exactly the same
 all.equal(radio_tidy, radio_tidy3)
 
