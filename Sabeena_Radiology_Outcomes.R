@@ -87,19 +87,60 @@ TAT_data_no78na <- TAT_data_all[rowSums(is.na(TAT_data_all)) < 7, ]
 head(TAT_data_no78na)
 describe(TAT_data_no78na)
 str(TAT_data_no78na)
+nrow(TAT_data_no78na)
 #9318 missing mdex
 #write.csv(TAT_data_no78na, file = "247_short_with_no_7or8_NA.csv")
+#missing from trauma, todseen, and mdex. So those will have to be defined in the winbugs
 
-
-#take all NA rows out and write to .csv
+#take all NA rows out and write to .csv, doing this for winbugs, so also need to create new columns for each level of categorical
 TAT_data_nona <- TAT_data_all[rowSums(is.na(TAT_data_all)) == 0, ]
 sum(is.na(TAT_data_nona))
-#write.csv(TAT_data_nona, file = "247_short_no_NA.csv")
-nrow(radio_no_NA)
+str(TAT_data_nona)
+#make a side peice just for the write to csv for winbugs
+TAT_data_nona_wb <- TAT_data_nona
+TAT_data_nona_wb$ctas1 <- ifelse(TAT_data_nona_wb$ctas == 1, 1, 0)
+TAT_data_nona_wb$ctas2 <- ifelse(TAT_data_nona_wb$ctas == 2, 1, 0)
+TAT_data_nona_wb$ctas3 <- ifelse(TAT_data_nona_wb$ctas == 3, 1, 0)
+TAT_data_nona_wb$ctas4 <- ifelse(TAT_data_nona_wb$ctas == 4, 1, 0)
+TAT_data_nona_wb$ctas5 <- ifelse(TAT_data_nona_wb$ctas == 5, 1, 0)
+
+TAT_data_nona_wb$todseen1 <- ifelse(TAT_data_nona_wb$todseen == 1, 1, 0)
+TAT_data_nona_wb$todseen2 <- ifelse(TAT_data_nona_wb$todseen == 2, 1, 0)
+TAT_data_nona_wb$todseen3 <- ifelse(TAT_data_nona_wb$todseen == 3, 1, 0)
+
+TAT_data_nona_wb$group <- ifelse(TAT_data_nona_wb$group == 2, 1, 0)
+
+head(TAT_data_nona_wb)
+str(TAT_data_nona_wb)
+#write.csv(TAT_data_nona_wb, file = "247_short_no_NA.csv")
+nrow(TAT_data_nona_wb)
 #no missing mdex
 
+#make another for winbugs with the NAs
+#take all NA rows out and write to .csv, doing this for winbugs, so also need to create new columns for each level of categorical
+#make a side peice just for the write to csv for winbugs
+TAT_data_na_wb <- TAT_data_no78na
+TAT_data_na_wb$ctas1 <- ifelse(TAT_data_na_wb$ctas == 1, 1, 0)
+TAT_data_na_wb$ctas2 <- ifelse(TAT_data_na_wb$ctas == 2, 1, 0)
+TAT_data_na_wb$ctas3 <- ifelse(TAT_data_na_wb$ctas == 3, 1, 0)
+TAT_data_na_wb$ctas4 <- ifelse(TAT_data_na_wb$ctas == 4, 1, 0)
+TAT_data_na_wb$ctas5 <- ifelse(TAT_data_na_wb$ctas == 5, 1, 0)
+
+TAT_data_na_wb$todseen1 <- ifelse(TAT_data_na_wb$todseen == 1, 1, 0)
+TAT_data_na_wb$todseen2 <- ifelse(TAT_data_na_wb$todseen == 2, 1, 0)
+TAT_data_na_wb$todseen3 <- ifelse(TAT_data_na_wb$todseen == 3, 1, 0)
+
+TAT_data_na_wb$group <- ifelse(TAT_data_na_wb$group == 2, 1, 0)
+
+head(TAT_data_na_wb)
+
+write.csv(TAT_data_na_wb, file = "247_short_no78_NA.csv")
+nrow(TAT_data_na_wb)
+#no missing mdex
+
+
 #make a short version of the list in order to run winbugs on my laptop....ouf, 2000 was pretty slow, 4000 didn't work
-TAT_data_nona_trunk <- TAT_data_nona[1:3000, ]
+TAT_data_nona_trunk <- TAT_data_nona[1:6000, ]
 nrow(TAT_data_nona_trunk)
 #write.csv(TAT_data_nona_trunk, file = "247_short_no_NA_trunk.csv")
 
@@ -143,7 +184,6 @@ ggplot(data = TAT_data_no78na, aes(x = group, y = mdex)) + geom_boxplot()
 tapply(TAT_data_no78na$mdex, TAT_data_no78na$group, mean, na.rm = T)
 tapply(TAT_data_no78na$mdex, TAT_data_no78na$group, median, na.rm = T)
 tapply(TAT_data_no78na$mdex, TAT_data_no78na$group, sd, na.rm = T)
-tapply(TAT_data_no78na$mdex, TAT_data_no78na$group, count, na.rm = T)
 #####I have the same mean and sds for each group as Sabeena
 
 length(which(TAT_data_no78na$group==1))
@@ -175,7 +215,7 @@ summary(all.multi.lm)
 confint(all.multi.lm)
 #now it's a reduction of 4 to increase of 1 minute
 
-
+###P-P-P-POISSSON
 #check some poisson regressions, missing data
 simple.glm <- glm(data = TAT_data_no78na, mdex ~ group, family = "poisson")
 summary(simple.glm)
@@ -199,7 +239,6 @@ summary(bic_out)
 bic_out$mle
 
 #this is just to see which models look promising
-?bicreg
 bic_out$mle
 #it straight up cuts out group. Damn. That's cold son.
 

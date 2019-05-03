@@ -7,3 +7,5 @@ Imported the data two other ways and they are all the same. Doing some initial i
 Did some freq regressions without dealing with missing data
 
 Re-did it with the short data
+
+create r markdown
