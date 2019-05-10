@@ -20,7 +20,15 @@ knitr::opts_chunk$set(
 
 ```
 
+Summary 
 
+Model: poisson regression with a negative binomial adjustment. 
+
+Confouding: there isn't evidence of strong relationships between the potential confounders and the intervention (group), but the effect of group isn't strong, so I don't think it would take strong confounding to seriously influence the relationship between group and turn around time (mdex)
+
+Results: if potential confoudning is ignored and we only look at a univariate model, there is a modest decrease in turn around time due to group (0.6% to 3.1%). If we include potential confounders in various models, there is an *increase* in turn around time due to group (1.4% to 4.0%).
+
+Next Steps in analysis: I'm going to run multivariate models in winbugs. I've also reached out to Dr Joseph to see what he thinks. It's possible that a NB poisson model is not appropriate or that I should configure my data in some other way. 
 
 ```{r}
 setwd("/Users/macbook/Documents/McGill School/Sabeena_Radiology_Outcomes")
@@ -84,17 +92,24 @@ ggplot(data = wb_data_na, aes(x = mdex, color = group)) +
   labs(title = "Turn Around Time Distribution by Group", subtitle = "TAT < 1000 mins", color = "Group", x = "Turn Around Time (minutes)", y = "Count") +
   scale_color_discrete(name = "Group", labels = c("pre-24/7","post 24/7"))
 
+ggplot(data = wb_data_na, aes(x = mdex, color = group)) + 
+  geom_histogram(binwidth = 5, alpha = 0.2, position = "identity", fill = "white") + xlim(0, 100) +
+  labs(title = "Turn Around Time Distribution by Group", subtitle = "TAT < 100 mins", color = "Group", x = "Turn Around Time (minutes)", y = "Count") +
+  scale_color_discrete(name = "Group", labels = c("pre-24/7","post 24/7"))
+
+
 #the 95th quantil is this
 #quantile(wb_data_na$mdex, 0.95, na.rm = T)
 #mean(wb_data_na$mdex, na.rm = T)
 #sd(wb_data_na$mdex, na.rm = T)
 #mean is smaller than the sd...check for overdispersion later
+
+
 ```
 
-It looks like a poisson distribution. There are no negative values, it is a count of minutes, most counts are small but they can go out to infinity, not many ...other things to justify poisson. What is it assuming? Something about low homogeneous intensity, in that they occur at random and have the same force driving them or somthing. 
+It looks like a poisson distribution. Turn Around Time (TAT; mdex) is like survival time, it's a count of minutes that is takes. There are no negative values, it is a count of minutes, most counts are small but they can go out to infinity, not many (are there other things I need to state to justify?). It is assuming low homogeneous intensity, in that they occur at random. It is also assuming that the mean and the sd are the same, though this is seldom the case with real data sets.
 
-
-Take a look at the times in each group.
+Now let's take a look at the TAT (mdex) in each group.
 ```{r}
 
 ggplot(data = wb_data_na, aes(x = group, y = mdex)) + geom_boxplot() +
@@ -109,10 +124,10 @@ ggplot(data = wb_data_na, aes(x = group, y = mdex)) + geom_boxplot(outlier.shape
 var(wb_data$mdex)
 mean(wb_data$mdex)
 ```
-It doesn't look like a huge difference between the groups. 
+It doesn't look like a huge difference between the groups. Note that the mean and variance are different. Likely dealing with overdispersion. 
 
 
-**Table 1 and Potential Confounding**
+**Table 1 Descriptives and Potential Confounding**
 Let's look into potential confounders. See which variables appear to have a relationship with the intervention (group) AND with the outcome (turn around time, labelled "mdex").
 
 Take a quick look at "Table 1" stratified by group to see if there are any imbalances of variables between the groups. An imbalance between groups would suggest a relationship with the group. 
@@ -131,6 +146,8 @@ table1_data_na$adm <- factor(table1_data_na$adm, levels = c(0,1), labels = c("No
 table1_data_na$ctas <- factor(table1_data_na$ctas, levels = c(1,2,3,4,5), labels = c("Dead/Resus", 2, 3, 4, "Almost Normal"))
 
 table1(~ ctas + imaging + adm + todseen + trauma + mdex | group, data = table1_data_na)
+
+
 ```
 Everything looks pretty balanced. A couple of spots that have a difference of 1.2% between the groups, but most are less than 1%.
 Side note: we can see the median and mean for each group. We can also see Where the missing data is. It's about 5% of the mdex, 5% of todseen, and less than 1% of the trauma.
@@ -142,12 +159,11 @@ table1(~ ctas + imaging + adm + todseen + mdex | group*trauma, data = table1_dat
 
 table1(~ trauma + imaging + adm + todseen + mdex | group*ctas, data = table1_data_na)
 ```
-Still looking very balanced. 
+Still looking very balanced. Note that this is a quick look and it tells us that none of the potential confounders has a super strong relationship with group. We can also see that the TAT (mdex) aren't hugely different between the groups either. We will come back to this later. 
 
 When stratified by tauma: CTAS maybe has a couple of spots that are between 1% and 1.5% different. Imaging and Adm have spots with 1.2% difference.  
 
 When stratified by ctas: there are some spots where it's 3% different. But now we're really slicing and dicing. 
-
 
 
 If we REALLY want to look hard, we can look at each level of each variable and see the propotion that is in each group. Perfect balance (and no relationship with group) would be 0.5, so we can do a bunch of tests of propotion vs the null of 0.5. I'm not sure this adds a lot of value since the n is so large, the CIs are very tight and some of them end up not covering the null even though the proportion is something like 0.51.
@@ -209,6 +225,7 @@ tr.pt.cis <- data.frame(row.names = c("trauma0", "trauma1"), round(matrix(data =
 colnames(tr.pt.cis) <- c("2.5%", "97.5%")
 tr.pt.cis
 
+
 ```
 Only CTAS and Trauma have levels where CIs go beyond 2% fromm 0.5. That means a max 4% difference between groups at certain levels of CTAS and Trauma. This suggests there may be some sort of relationship, but not a strong one. Notice ctas1 has a CI that goes up to 0.543, this is due to small numbers of ctas1 (this is widest of all CIs).
 
@@ -216,8 +233,33 @@ Todseen, imaging, and adm have at most 1.6% from 0.5 and many levels have chunks
 
 I honnestly don't think any of these variables have an important relationship with group. If I saw these numbers in an RCT, I wouldn't bat an eyelash and would be believe that randomization worked. If we really want to force ourselves to think that there might be confounding, maybe trauma and ctas have some sort of relationship with group (ie: imbalance). 
 
-Group is pre vs post 24/7, is there some reason to think that there is a relationship between group and any of the indepenant variables?
+Those were just inspecting the distribution of variables and prop tests. Could also look at a logistic regression onto group to see if there are effects. 
+```{r}
 
+group.logit <- glm(data = wb_data, group ~ ctas + adm + imaging + todseen + trauma, family = "binomial")
+
+g.logit.all.ci <- exp(confint(group.logit))
+g.logit.c.ci <- exp(confint(glm(data = wb_data, group ~ ctas, family = "binomial")))
+g.logit.tr.ci <- exp(confint(glm(data = wb_data, group ~ trauma, family = "binomial")))
+g.logit.a.ci <- exp(confint(glm(data = wb_data, group ~ adm, family = "binomial")))
+g.logit.i.ci <- exp(confint(glm(data = wb_data, group ~ imaging, family = "binomial")))
+g.logit.to.ci <- exp(confint(glm(data = wb_data, group ~ todseen, family = "binomial")))
+
+g.logit.all.ci
+g.logit.c.ci 
+g.logit.tr.ci
+g.logit.a.ci 
+g.logit.i.ci 
+g.logit.to.ci
+
+library(BMA)
+
+bic.glm.formula(data = wb_data, group ~ adm + trauma + ctas + imaging + todseen, glm.family = "binomial")
+
+```
+Regressing each variable onto group makes it look like adm, trauma, and ctas have relationships with group. Imaging barely does and todseen doesn't seem to. Again, no STRONG relationships between any of the potential confounders and group, however adm, trauma, and ctas seem to be the "strongest"" of all of there "super weak" relationships. Could also make a case for imaging. 
+
+Group is pre vs post 24/7, is there some reason to think that there is a relationship between group and any of the indepenant variables?
 
 Now we can look at the relationship between the variables and outcome. 
 ```{r}
@@ -236,10 +278,12 @@ boxplot(wb_data$mdex ~ wb_data$todseen, xlab = "toseen", ylab = "mdex", outline 
 boxplot(wb_data$mdex ~ wb_data$ctas, xlab = "ctas", ylab = "mdex", outline = F)
 boxplot(wb_data$mdex ~ wb_data$imaging, xlab = "imaging", ylab = "mdex", outline = F)
 ```
-They all seem to have some sort of relationship with the outcome. 
+They all seem to have some sort of relationship with the outcome. Adm, CTAS, and imaging have the strongest relationships. That is important to keep in mind. Later, we will see that group has a very weak relationship with TAT (mdex), so does that mean we should be hyper-vigilant to even the weakest confounders? If there is evidence that adm, ctas, and imaging have weak relationships with group but strong relationships with the TAT (mdex), then maybe we should be concerned that even that weak confounding could distort the relationship between group and TAT (mdex) due to that relationship being so weak and vulnerable to confounding. 
 
+Let's do some univariate regressions, and then do multivariate with Trauma, CTAS, Adm, Imaging, and Group. I think the univariate poisson regresion mdex ~ group is probably the best due to the weakness of the confounders' relationships with group. That being said, it might be that group's relationship with TAT (mdex) is so weak that even mild confounding can distort it.
 
-Let's do some univariate regressions, and then do multivariate with Trauma, CTAS, and Group. I think the univariate poisson regresion mdex ~ group is probably the best due to the weakness of the Trauma and CTAS relastionships with group. I'm not convinced Adm, Todseen, and Imaging should be considered and I don't see a strong relationship between them and Group. If there is some good reason for including them, then we can do that (eg: once the 24/7 was implmented, more cases that were likely to be admissions were sent to this hospital instead of another one). 
+**Poisson Regressions**
+I did these before exploring over dispersion. I'm not spending too much time looking at them. Just a quick uni vs some multi. It does help show potential confounding, though I didn't include all potential confounders in table. 
 ```{r}
 g.uni <- glm(data = wb_data, formula = mdex ~ group, family = poisson(link = "log"))
 i.uni <- glm(data = wb_data, mdex ~ imaging, family = "poisson")
@@ -256,32 +300,39 @@ tr.c.multi <- glm(data = wb_data, mdex ~ trauma + ctas, family = "poisson")
 all.multi <- glm(data = wb_data, mdex ~ group + imaging + trauma + ctas + todseen + adm, family = "poisson")
 
 library("stargazer")
-
 ```
 
 ```{r results= 'asis'}
 stargazer(g.uni, tr.uni, c.uni, g.tr.multi, g.c.multi, tr.c.multi, g.tr.c.multi, all.multi, ci = TRUE, ci.level = 0.95, type = "html")
 ```
+
 Group changes a bit when trauma is brought in and changes a bit more when CTAS is brought in. That is evidence of confounding. 
+
+Look at the other potential confounders (I split them into 2 tables to make it easier to digest).
 
 ```{r}
 
-g.adm.multi <- glm(data = wb_data, mdex ~ group + adm, family = "poisson")
+g.a.multi <- glm(data = wb_data, mdex ~ group + adm, family = "poisson")
 
 g.to.multi <- glm(data = wb_data, mdex ~ group + todseen, family = "poisson")
 g.i.multi <- glm(data = wb_data, mdex ~ group + imaging, family = "poisson")
+#stargazer(g.uni, a.uni, to.uni, i.uni, g.a.multi, g.to.multi, g.i.multi,  ci = TRUE, ci.level = 0.95, type = "text")
 
 ```
 
 ```{r results= 'asis'}
-stargazer(g.uni, a.uni, to.uni, i.uni, g.adm.multi, g.to.multi, g.i.multi,  ci = TRUE, ci.level = 0.95, type = "html")
+stargazer(g.uni, a.uni, to.uni, i.uni, g.a.multi, g.to.multi, g.i.multi,  ci = TRUE, ci.level = 0.95, type = "html")
 ```
-Group doesn't change when todseen is brought in. Changes a bit when imaging is brought in. Group changes a when adm is brought in (almost goes o zero). That is evidence of confounding, but recall that the relationship between these variables and group is weak. Are we at risk of adjuting on a collider here? I'm not sure. Maybe these adjustments here are distorting the true relationship. Recall the boxplots that showed adm and imaging have what appear to be very strong relationships with mdex (confirmed by coefficients in these regressions). Could it be that since they are such strong determinants of mdex, the slightest bit of random noise in them drowns out/distorts the effect of group? Maybe consider simulating a data set to explore this. 
+Group doesn't change when todseen is brought in. Changes a bit when imaging is brought in. Group changes a lot when adm is brought in (almost goes to zero). That is evidence of confounding, but recall that the relationship between these variables and group is weak. Recall the boxplots that showed adm and imaging have what appear to be very strong relationships with mdex (confirmed by coefficients in these regressions). Could it be that since they are such strong determinants of mdex, even the slightest relationship with group makes them a confounder of the relationship between group and mdex? 
+
+Summary: evidence of confounding from adm and ctas. Maybe from imaging and trauma. Not from todseen.
 
 **Winbugs**
-Take a look at poisson in Winbugs. 
+Take a look at poisson in Winbugs.
 
 Here is the univariate model for the data with missing value rows removed and no impuation:
+
+```
 model
 {
     for (i in 1:165429) {		
@@ -296,9 +347,10 @@ model
 list(alpha=0, b.group=0)
 #data
 mdex[]	group[]
+```
 
 Here is the model for the data with missing value included and with impuation:
-
+```
 model
 {
     for (i in 1:174829) {				#got the n from R, did nrows, there are more rows for this simple reg because there are missing mdex values
@@ -314,6 +366,7 @@ model
 list(alpha=0, b.group=0)
 #data
 mdex[]	group[]
+```
 
 The results are below and compared to the R frequentist output. They are the same, as expected since the priors are uninformative and there isn't much missing data. 
 ```{r}
@@ -333,7 +386,8 @@ confint(g.uni)
 ```
 
 
-Here is the multivariate model for the data with missing value rows removed and no impuation (x in place of * to counter markdown formatting):
+Here is the multivariate model with all 5 covariates included. This is using data with missing value rows removed and no impuation (x in place of * to counter markdown formatting):
+```
 model
 {
     for (i in 1:165429) {				#got the n from R, did nrows, there are more rows for this simple reg because there are missing mdex values
@@ -358,8 +412,10 @@ model
 list(alpha=0, b.group=0, b.ctas2=0, b.ctas3=0, b.ctas4=0, b.ctas5=0, b.imaging=0, b.todseen2=0, b.todseen3=0, b.trauma=0, b.adm=0 )
 #data
 mdex[]	imaging[]	trauma[]	group[]	adm[]	ctas2[]	ctas3[]	ctas4[]	ctas5[]	todseen2[]	todseen3[]
+```
 
-Here is the multivariate model for the data with missing value rows included and using simple impuation formulas (x in place of * to counter markdown formatting):
+Here is the multivariate model with all 5 covariates included. This is with missing value rows included and using simple impuation formulas (x in place of * to counter markdown formatting):
+```
 model
 {
     for (i in 1:174829) {				#got the n from R, did nrows, there are more rows for this simple reg because there are missing mdex values
@@ -399,6 +455,7 @@ alpha.todseen3   ~ dnorm(0.0,1.0E-4)
 list(alpha=0, b.group=0, b.ctas2=0, b.ctas3=0, b.ctas4=0, b.ctas5=0, b.imaging=0, b.todseen2=0, b.todseen3=0, b.trauma=0, b.adm=0, alpha.trauma =0, b.trauma.group = 0, alpha.todseen3 = 0, b.todseen3.group = 0, alpha.todseen2 = 0, b.todseen2.group =0)
 #data
 mdex[]	imaging[]	trauma[]	group[]	adm[]	ctas2[]	ctas3[]	ctas4[]	ctas5[]	todseen2[]	todseen3[]
+```
 
 ```{r}
 wb.results.all.multi.noImp <- read.delim("Winbugs files/pois_allmulti_noNA_noImp.txt")
@@ -416,18 +473,23 @@ confint(all.multi)
 ```
 As with the univariate, the results are virtually the same for the Bayesian Winbugs with or without imputation and also virtually the same as the frequntist R. 
 
-Looking at the "all.multi" model (ie: multivariate with all independent variables included) was done just to see what it would look like. As discussed above, I lean towards the univariate model, or at most a multivariate with trauma and ctas included. I haven't run a group + ctas + trauma model in Winbugs yet. It's at this point that I realized that I should have looked into over dispersion sooner.....There definitely is overdispersion (see below). Adjusting for it won't change the point estimates but will change the confidence intervals. 
+Looking at the "all.multi" model (ie: multivariate with all independent variables included) was done just to see what it would look like. As discussed above, I lean towards the univariate model, or a multivariate with only adm and ctas included. I haven't run a group + ctas + adm model in Winbugs yet. Note about model selection, in the words of Dr Joseph: "the aim of model selection is to avoid selecting a particular model". So I guess I will look at several models and try to draw a conclusion on the effect of group. 
 
 Before talking about overdispersion, here's an inital quick stab at interpreing the results:
 
 ```{r}
 exp(confint(g.uni))
 ```
-This suggests a 1.8% to 2.0% reduction in turn around time due to the effect of group. 
+This suggests a 1.8% to 2.0% reduction in turn around time due to the effect of group. This is a univariate model with plain old poisson without imputation, but as seen above imputation in winbugs didn't change the results. Also, note that unadjusted poisson is probably not appropriate. 
 
+```{r}
+exp(confint(all.multi))
+```
+0.4% too 0.5% reduction. This is a multivariate model with all 5 covariates thrown in. Plain poisson without imputation. 
 
-**Overdispersion**
-Looking at overdispersion:
+**Over dispersion**
+....finally.
+The mean probably isn't the same and the sd, so let's look at overdispersion:
 ```{r}
 std.res <- (wb_data$mdex - as.vector(g.uni$fitted.values))/sqrt(as.vector(g.uni$fitted.values))
 std.res.plot.data <- data.frame(std.res = std.res, fitted = g.uni$fitted.values, group = as.factor(wb_data$group))
@@ -446,10 +508,11 @@ Propotion of standarized resiuals greater than +/- 2 SDs:
 (sum(std.res > 2) + sum(std.res < -2))/length(std.res)
   
 ```
+We will have to do some sort of adjustment to accound for the over dispersion (more on that later).
 
 
 
-Do it again using quasi poisson. There is overinflation (the variance is greater than the mean, this is quite common). The quasi poisson is one way to adjust for it. This doesn't affect he Point Estimates, but it does widden the Confidence Intervals and affect inference. 
+Do it again using quasi poisson. There is overdispersion (the variance is greater than the mean, this is quite common). The quasi poisson is one way to adjust for it. This doesn't affect he Point Estimates, but it does widden the Confidence Intervals and affect inference. 
 ```{r}
 q.g.uni <- glm(data = wb_data, formula = mdex ~ group, family = quasi(variance = "mu", link = "log"))
 q.i.uni <- glm(data = wb_data, mdex ~ imaging,  family = quasi(variance = "mu", link = "log"))
@@ -458,33 +521,181 @@ q.a.uni <- glm(data = wb_data, mdex ~ adm, family = quasi(variance = "mu", link 
 q.c.uni <- glm(data = wb_data, mdex ~ ctas,  family = quasi(variance = "mu", link = "log"))
 q.to.uni <- glm(data = wb_data, mdex ~ todseen, family = quasi(variance = "mu", link = "log"))
 
-q.g.tr.c.multi <- glm(data = wb_data, mdex ~ group + trauma + ctas,  family = quasi(variance = "mu", link = "log"))
-q.g.tr.multi <- glm(data = wb_data, mdex ~ group + trauma,  family = quasi(variance = "mu", link = "log"))
+q.g.a.c.multi <- glm(data = wb_data, mdex ~ group + adm + ctas,  family = quasi(variance = "mu", link = "log"))
+q.g.a.multi <- glm(data = wb_data, mdex ~ group + adm,  family = quasi(variance = "mu", link = "log"))
 q.g.c.multi <- glm(data = wb_data, mdex ~ group + ctas,  family = quasi(variance = "mu", link = "log"))
-q.tr.c.multi <- glm(data = wb_data, mdex ~ trauma + ctas,  family = quasi(variance = "mu", link = "log"))
+q.a.c.multi <- glm(data = wb_data, mdex ~ adm + ctas,  family = quasi(variance = "mu", link = "log"))
 
 q.all.multi <- glm(data = wb_data, mdex ~ group + imaging + trauma + ctas + todseen + adm,  family = quasi(variance = "mu", link = "log"))
 
+#this stargazer is for looking at in R, hashtag it out for knitting
+#stargazer(q.g.uni, q.a.uni, q.c.uni, q.g.a.multi, q.g.c.multi, q.a.c.multi, q.g.a.c.multi, q.all.multi, ci = TRUE, ci.level = 0.95, type =  "text")
 ```
 
 ```{r results= 'asis'}
-stargazer(q.g.uni, q.tr.uni, q.c.uni, q.g.tr.multi, q.g.c.multi, q.tr.c.multi, q.g.tr.c.multi, q.all.multi, ci = TRUE, ci.level = 0.95, type =  "html")
+stargazer(q.g.uni, q.tr.uni, q.c.uni, q.g.a.multi, q.g.c.multi, q.a.c.multi, q.g.a.c.multi, q.all.multi, ci = TRUE, ci.level = 0.95, type =  "html")
 ```
 Notice the confidence intervals getting wider. 
 
-```{r}
-exp(confint(q.g.uni))
-```
-Now this adjusted quasi poisson univariate model suggests a reduction in urn around time from 0.6% to 3.1%
 
-Use BIC to select a model. There are so many observations that there really is no risk of overfitting, so it keeps all variables in.
+Another method to adjust for overinflation is negative binomial.
+```{r}
+#check  negative binomial to compare to quasi pois
+library(MASS)
+
+nb.g.uni <- glm.nb(data = wb_data, formula = mdex ~ group)
+nb.i.uni <- glm.nb(data = wb_data, formula = mdex ~ imaging)
+nb.tr.uni <- glm.nb(data = wb_data, formula = mdex ~ trauma)
+nb.a.uni <- glm.nb(data = wb_data, formula = mdex ~ adm)
+nb.c.uni <- glm.nb(data = wb_data, formula = mdex ~ ctas)
+nb.to.uni <- glm.nb(data = wb_data, formula = mdex ~ todseen)
+
+nb.g.a.c.multi <- glm.nb(data = wb_data, mdex ~ group + adm + ctas)
+nb.g.tr.multi <- glm.nb(data = wb_data, mdex ~ group + trauma)
+nb.g.c.multi <- glm.nb(data = wb_data, mdex ~ group + ctas)
+nb.a.c.multi <- glm.nb(data = wb_data, mdex ~ adm + ctas)
+nb.g.a.multi <- glm.nb(data = wb_data, mdex ~ group + adm)
+
+nb.g.tr.c.a.multi <- glm.nb(data = wb_data, mdex ~ group + trauma + ctas + adm)
+
+nb.all.multi <- glm.nb(data = wb_data, mdex ~ group + imaging + trauma + ctas + todseen + adm)
+
+#this stargazer is for looking at in R, hashtag it out for knitting. Comparing all the q-p to nb
+#stargazer(q.g.uni, nb.g.uni, ci = TRUE, ci.level = 0.95, type =  "text")
+#stargazer(q.i.uni, nb.i.uni, ci = TRUE, ci.level = 0.95, type =  "text")
+#stargazer(q.tr.uni, nb.tr.uni, ci = TRUE, ci.level = 0.95, type =  "text")
+#stargazer(q.a.uni, nb.a.uni, ci = TRUE, ci.level = 0.95, type =  "text")
+#stargazer(q.c.uni, nb.c.uni, ci = TRUE, ci.level = 0.95, type =  "text")
+#stargazer(q.to.uni, nb.to.uni, ci = TRUE, ci.level = 0.95, type =  "text")
+
+#that's all nice and dandy, really, the only ones I might look at are group, group+traum+ctas, all
+#stargazer(nb.g.uni, q.g.tr.c.multi, nb.g.tr.c.multi, q.all.multi, nb.all.multi, ci = TRUE, ci.level = 0.95, type =  "text")
+
+#looking for adm confouding, loooks like it's there
+#stargazer(nb.g.uni, nb.a.uni, nb.g.a.multi, nb.all.multi, ci = TRUE, ci.level = 0.95, type =  "text")
+
+#look at three most reasonable models
+#stargazer(nb.g.uni, nb.g.tr.c.multi, nb.g.tr.c.a.multi, nb.all.multi, ci = TRUE, ci.level = 0.95, type =  "text")
+#depending on which covariates we chose to include in our model, the effect of group could be a slight decrease in TAT or a slight increase in TAT. 
+
+```
+That entered all of them in. Let's see how they compare to the quasi - poisson:
+
+```{r results= 'asis'}
+stargazer(q.g.uni, nb.g.uni,q.i.uni, nb.i.uni, q.tr.uni, nb.tr.uni, q.a.uni, nb.a.uni, q.c.uni, nb.c.uni, q.to.uni, nb.to.uni, ci = TRUE, ci.level = 0.95, type =  "html")
+```
+All the PE for the univariates stay the same, but the CIs get smaller under NB. 
+
+
+Now let's compare how the multivariate quasi-poisson and multivariate NB describe the effect of group.
+```{r results= 'asis'}
+#that's all nice and dandy, really, the only ones I might look at are group, group+adm+ctas, all
+stargazer(nb.g.uni, q.g.a.c.multi, nb.g.a.c.multi, q.all.multi, nb.all.multi, ci = TRUE, ci.level = 0.95, type =  "html")
+
+#looking for adm confouding, loooks like it's there
+stargazer(nb.g.uni, nb.a.uni, nb.g.a.multi, nb.all.multi, ci = TRUE, ci.level = 0.95, type =  "html")
+
+#look at three most reasonable models
+stargazer(nb.g.uni, nb.g.a.c.multi, nb.g.tr.c.a.multi, nb.all.multi, ci = TRUE, ci.level = 0.95, type =  "html")
+#depending on which covariates we chose to include in our model, the effect of group could be a slight decrease in TAT or a slight increase in TAT. 
+```
+The NB seems to move the group coefficient to positive. Sort of no matter how we look at it. 
+
+
+Which one to choose? I read a paper that said the NB gives more weight to the lower values of mdex when it fits the regression, so it is better for predicting the lower end, whereas q-p is the opposite. There is a value of "count" where the thetas of both methods give the same variance. Look for the mean count value where the variance of the NB and the q-p are the same
+```{r}
+sum.q.g <- summary(q.g.uni)
+theta.q <- sum.q.g$dispersion
+
+sum.nb.g <- summary(nb.g.uni)
+sum.nb.g
+theta.nb <- nb.g.uni$theta
+
+#mu * theta.q = mu * (1 + theta.nb * mu)
+eq.var.mu <- (theta.q - 1) / theta.nb
+#so the count at which the variances for nb and qp are equal is 534 minutes. Let's see what quantile that is
+quantile(wb_data_na$mdex, 0.88, na.rm = T)
+#approx 88% of our data points are below 534 minutes. We want a model that prioritizes that fit. So we want NB. 
+
+```
+The "break even" point for adjusted variance and thus weighting is 534. Most of our interesting data is below there (that is more the "routine" operations as I understand it). That suggests that we should use NB. 
+
+
+```{r}
+uni.cis <- exp(confint(g.uni))
+
+q.uni.cis <- exp(confint(q.g.uni))
+
+nb.uni.cis <- exp(confint(nb.g.uni))
+nb.uni.cis
+
+multi.cis <- exp(confint(all.multi))
+
+q.multi.cis <- exp(confint(q.all.multi))
+
+nb.multi.cis <- exp(confint(nb.all.multi))
+nb.multi.cis
+
+nb.g.a.c.multi.cis <- exp(confint(nb.g.a.c.multi))
+nb.g.a.c.multi.cis
+
+```
+The NB univariate model suggests a reduction in turn around time from 0.6% to 3.1%.
+The NB multivariate model with all covariates suggests an INCREASE in turn around time from 2.4% to 4.0%. That is the multi model with everything in. 
+The NB multivariate model with ctas and adm suggests an INCREASE in turn around time from 1.4% to 3.2%. That is the multivariate model that includes confoudners that I think have the stringest evidence, though it is still weak confounding. 
+
+```{r}
+#wb_data_play
+
+#play.uni <- glm.nb(data = wb_data_play, formula = mdex ~ group)
+#exp(confint(play.uni))
+#summary(play.uni)
+
+#Hot damn it works!
+
+#now try imputation?
+
+wb.results.NB.uni.noImp <- read.delim("Winbugs files/NBpois_uni_noNA_noImp.txt")
+wb.results.NB.uni.noImp
+
+
+wb.results.NB.uni.Imp <- read.delim("Winbugs files/NBpois_uni_NA_Imp.txt")
+wb.results.NB.uni.Imp
+nb.g.uni
+confint(nb.g.uni)
+```
+I built and ran a winbugs model without and with imputation and they give a very similar results (including thetas, called r in the winbugs files) to the R frequentist NB analysis. Notet that the CI is a little wider on the impuation, as we would expect....and hope for! The next step would be to run this on a multivarite NB model. I'm guessing/hoping it will give the same results.
+
+FYI, the winbugs model with missing values and imp is (the no missing values and no Imp is virtually the same):
+```
+model
+{
+    for (i in 1:174829) {				
+	mdex[i] ~ dnegbin( p[i], r)
+	p[i] <- r / ( r + lambda[i] )
+    log(lambda[i])  <- alpha + b.group*group[i] 
+    }
+    alpha    ~ dnorm(0.0,1.0E-4)
+    b.group    ~ dnorm(0.0,1.0E-4)
+	r ~ dgamma(0.001, 0.001)
+
+ }
+
+#inits
+list(alpha=0, b.group=0, r = 1)
+
+mdex[]	group[]
+```
+
+
+Use BIC to select a model. Not sure if this is the most useful, it wants to kick out group, that's because group is a very poor predictor of mdex, so for a predictive model, it's not useful to have group in there. I'm not so much interested in model selection for prediction as I am in determining the effect of group. 
 ```{r}
 library(BMA)
 
 smaller.bic <- bic.glm.formula(data = wb_data, f = mdex ~ group + trauma + ctas, glm.family = "poisson", OR = 1000000)
 summary(smaller.bic)
 
-q.smaller.bic <- bic.glm.formula(data = wb_data, f = mdex ~ group + trauma + ctas, glm.family = quasi(variance = "mu", link = "log"), OR = 1000000)
+q.smaller.bic <- bic.glm.formula(data = wb_data, f = mdex ~ group + trauma + ctas + adm, glm.family = quasi(variance = "mu", link = "log"), OR = 1000000)
 summary(q.smaller.bic)
 
 all.vars.bic <- bic.glm.formula(data = wb_data, f = mdex ~ group + trauma + ctas + adm + todseen + imaging, glm.family = "poisson", OR = 1000000)
@@ -493,5 +704,6 @@ summary(all.vars.bic)
 ```
 
 To do: 
+-run winbugs NB multivariate
 -simulate a data set where the noise of an independent but relatively strong determinant pushes around the detrminant of interest. 
 -look at regressions with outliers cut out (over 1000 minutes) and see if there is a big difference
