@@ -1,0 +1,563 @@
+---
+title: "247_data_analysis_for_Sabeena"
+author: "Marshall"
+date: '2019-05-02'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,          # don't show code
+  warning = FALSE,       # don't show warnings
+  message = FALSE,       # don't show messages (less serious warnings)
+  cache = FALSE,         # set to TRUE to save results from last compilation
+  fig.align = "center",   # center figures
+  fig.asp = 1,          # fig.aspect ratio
+  fig.width = 5       # fig width
+)
+
+```
+
+Summary
+
+I've filtered out the imaging = 0 data.
+
+Models: I'm having a tough time fitting the data to a model. Cox doesn't seem to work because it doesn't look that the hazards are proportional (hazard = instantaneous potential that the process is complete, ie: the end of mdex time). Weibell isn't appropriate either. I look at the data using Kaplan-Meier because that method doesn't require an underlying model (woohoo!). I also split mdex into tertiles and ran some ordinal regressions. I threw in some linear regressions at the end (not sure if they are appropriate for this kind of data).
+
+Effect of group: it seems to be very small. Also, when looking at the raw mdex numbers and not adjusting, it seems that there are more instances of very small mdex observations in the pre 24/7 group than the post 24/7. Then for slightly larger mdex values, it flips. 
+
+Sub-group analysis: It does seem like group has the strongest effect in the ctas1 and weakest in the ctas4 and 5.
+
+```{r}
+setwd("/Users/macbook/Documents/McGill School/Sabeena_Radiology_Outcomes")
+
+#this data has the blank rows and "all-but-id" blank rows removed. It also has extrat binary colmns for the categorical variables for use in winbugs
+wb_data <- read.csv("247_data_no_NA_GOOD.csv")
+wb_data_na <- read.csv("247_data_some_NA_GOOD.csv")
+
+wb_data$X <- NULL
+wb_data_na$X <- NULL
+
+#set factors to factors
+wb_data$ctas1 <- as.factor(wb_data$ctas1)
+wb_data$ctas2 <- as.factor(wb_data$ctas2)
+wb_data$ctas3 <- as.factor(wb_data$ctas3)
+wb_data$ctas4 <- as.factor(wb_data$ctas4)
+wb_data$ctas5 <- as.factor(wb_data$ctas5)
+wb_data$ctas <- as.factor(wb_data$ctas)
+wb_data$todseen <- as.factor(wb_data$todseen)
+wb_data$todseen1 <- as.factor(wb_data$todseen1)
+wb_data$todseen2 <- as.factor(wb_data$todseen2)
+wb_data$todseen3 <- as.factor(wb_data$todseen3)
+wb_data$group <- as.factor(wb_data$group)
+wb_data$imaging <- as.factor(wb_data$imaging)
+wb_data$trauma <- as.factor(wb_data$trauma)
+wb_data$adm <- as.factor(wb_data$adm)
+
+#repeat with na
+wb_data_na$ctas1 <- as.factor(wb_data_na$ctas1)
+wb_data_na$ctas2 <- as.factor(wb_data_na$ctas2)
+wb_data_na$ctas3 <- as.factor(wb_data_na$ctas3)
+wb_data_na$ctas4 <- as.factor(wb_data_na$ctas4)
+wb_data_na$ctas5 <- as.factor(wb_data_na$ctas5)
+wb_data_na$ctas <- as.factor(wb_data_na$ctas)
+wb_data_na$todseen <- as.factor(wb_data_na$todseen)
+wb_data_na$todseen1 <- as.factor(wb_data_na$todseen1)
+wb_data_na$todseen2 <- as.factor(wb_data_na$todseen2)
+wb_data_na$todseen3 <- as.factor(wb_data_na$todseen3)
+wb_data_na$group <- as.factor(wb_data_na$group)
+wb_data_na$imaging <- as.factor(wb_data_na$imaging)
+wb_data_na$trauma <- as.factor(wb_data_na$trauma)
+wb_data_na$adm <- as.factor(wb_data_na$adm)
+
+#this is where I can set the whole dang thing to with or without imaging
+wb_data <- subset(wb_data, imaging == 1)
+wb_data_na <- subset(wb_data_na, imaging == 1)
+#nrow(wb_data_i1)
+nrow(wb_data)
+library(ggplot2)
+
+```
+
+Checking out the distribution of turn around time (mdex). 
+
+```{r}
+
+ggplot(data = wb_data_na, aes(x = mdex, color = group)) + 
+  geom_histogram(binwidth = 200, alpha = 0.2, position = "identity", fill = "white") +
+  labs(title = "Turn Around Time Distribution by Group", color = "Group", x = "Turn Around Time (minutes)", y = "Count") +
+  scale_color_discrete(name = "Group", labels = c("pre-24/7","post 24/7"))
+#looks like poisson, looks like group 1 and 2 have extreme observations
+
+#look at the 0-1000 mdex range
+ggplot(data = wb_data_na, aes(x = mdex, color = group)) + 
+  geom_histogram(binwidth = 50, alpha = 0.2, position = "identity", fill = "white") + xlim(0, 1000) +
+  labs(title = "Turn Around Time Distribution by Group", subtitle = "TAT < 1000 mins", color = "Group", x = "Turn Around Time (minutes)", y = "Count") +
+  scale_color_discrete(name = "Group", labels = c("pre-24/7","post 24/7"))
+
+ggplot(data = wb_data_na, aes(x = mdex, color = group)) + 
+  geom_histogram(binwidth = 5, alpha = 0.2, position = "identity", fill = "white") + xlim(0, 100) +
+  labs(title = "Turn Around Time Distribution by Group", subtitle = "TAT < 100 mins", color = "Group", x = "Turn Around Time (minutes)", y = "Count") +
+  scale_color_discrete(name = "Group", labels = c("pre-24/7","post 24/7"))
+
+
+#the 95th quantil is this
+#quantile(wb_data_na$mdex, 0.95, na.rm = T)
+#mean(wb_data_na$mdex, na.rm = T)
+#sd(wb_data_na$mdex, na.rm = T)
+#mean is smaller than the sd...check for overdispersion later
+
+
+```
+
+There are more very low values in the pre 24/7 group than in the post group. There are most moderately low values in the post group than in the pre group. If there is no confounding, then this suggests that the effect of the intervention switches (negative at very low mdex times and positive at moderately low mdex times). 
+
+Now let's take a look at the TAT (mdex) in each group.
+```{r}
+
+ggplot(data = wb_data_na, aes(x = group, y = mdex)) + geom_boxplot() +
+  labs(title = "Turn Around Time by Group", x = "Group", y = "Turn Around Time (minutes)") +
+  scale_x_discrete(labels = c("pre 24/7", "post 24/7"))
+
+ggplot(data = wb_data_na, aes(x = group, y = mdex)) + geom_boxplot(outlier.shape = NA) +
+  scale_y_continuous(limits = c(0, 600)) +
+  labs(title = "Turn Around Time by Group", subtitle = "Outliers Removed", x = "Group", y = "Turn Around Time (minutes)") +
+  scale_x_discrete(labels = c("pre 24/7", "post 24/7"))
+
+var(wb_data$mdex)
+mean(wb_data$mdex)
+```
+It doesn't look like a huge difference between the groups. Note that the mean and variance are different. Likely dealing with overdispersion. 
+
+
+**Table 1 Descriptives and Potential Confounding**
+Let's look into potential confounders. See which variables appear to have a relationship with the intervention (group) AND with the outcome (turn around time, labelled "mdex").
+
+Take a quick look at "Table 1" stratified by group to see if there are any imbalances of variables between the groups. An imbalance between groups would suggest a relationship with the group. 
+```{r}
+#install.packages("table1")
+library(table1)
+
+
+#manipulate data set for Table 1, wont do it now, but if the table should be nicer, then we can label all the categories
+table1_data_na <- wb_data_na
+table1_data_na$group <- factor(table1_data_na$group, levels = c(0,1), labels = c("pre 24/7", "post 24/7"))
+table1_data_na$trauma <- factor(table1_data_na$trauma, levels = c(0,1), labels = c("Non-Trauma Pt", "Trauma Pt"))
+table1_data_na$todseen <- factor(table1_data_na$todseen, levels = c(1,2,3), labels = c("Morning", "Evening", "Night"))
+table1_data_na$adm <- factor(table1_data_na$adm, levels = c(0,1), labels = c("Not Admitted", "Admitted"))
+table1_data_na$ctas <- factor(table1_data_na$ctas, levels = c(1,2,3,4,5), labels = c("Dead/Resus", 2, 3, 4, "Almost Normal"))
+
+table1(~ ctas + adm + todseen + trauma + mdex | group, data = table1_data_na)
+
+
+```
+Everything looks pretty balanced. A couple of spots that have a difference of 1.6% between the groups, but most are less than 1%.
+Side note: we can see the median and mean for each group. We can also see Where the missing data is. It's about 1.5% of the mdex, 1.5% of todseen, and basically 0% of the trauma.
+
+
+Can sub-stratify by trauma and ctas if we want. I do that because those might be the least balanced of all the variables (I do proportion tests further down).
+```{r}
+table1(~ ctas  + adm + todseen + mdex | trauma*group, data = table1_data_na)
+
+table1(~ trauma  + adm + todseen + mdex | ctas*group, data = table1_data_na)
+```
+Still looking very balanced. Note that this is a quick look and it tells us that none of the potential confounders has a super strong relationship with group. We can also see that the TAT (mdex) aren't hugely different between the groups either. We will come back to this later. 
+
+When stratified by trauma: there seems to be less of an effect due to group. Notice how the mdex times actually go up post 24/7 group when trauma = 1. 
+
+When stratified by ctas: the effect of group on mdex seems a bit more consistent, though the median increases post 24/7 for higher ctas levels. 
+
+
+If we REALLY want to look hard, we can look at each level of each variable and see the propotion that is in each group. Perfect balance (and no relationship with group) would be 0.5, so we can do a bunch of tests of propotion vs the null of 0.5. I'm not sure this adds a lot of value since the n is so large, the CIs are very tight and some of them end up not covering the null even though the proportion is something like 0.51.
+```{r}
+#check columns proportions, not just overall
+c.table <- table(table1_data_na$group, table1_data_na$ctas)
+round(prop.table(c.table, 2), 3)
+pt.ctas1 <- prop.test(c.table[2,1], sum(c.table[1:2,1]), p = 0.5)
+pt.ctas2 <-  prop.test(c.table[2,2], sum(c.table[1:2,2]), p = 0.5)
+pt.ctas3 <-  prop.test(c.table[2,3], sum(c.table[1:2,3]), p = 0.5)
+pt.ctas4 <-  prop.test(c.table[2,4], sum(c.table[1:2,4]), p = 0.5)
+pt.ctas5 <-  prop.test(c.table[2,5], sum(c.table[1:2,5]), p = 0.5)
+
+
+to.table <- table(table1_data_na$group, table1_data_na$todseen)
+round(prop.table(to.table, 2), 3)
+pt.to1 <- prop.test(to.table[2,1], sum(to.table[1:2,1]), p = 0.5)
+pt.tos2 <-  prop.test(to.table[2,2], sum(to.table[1:2,2]), p = 0.5)
+pt.to3 <-  prop.test(to.table[2,3], sum(to.table[1:2,3]), p = 0.5)
+
+a.table <- table(table1_data_na$group, table1_data_na$adm)
+round(prop.table(a.table, 2), 3)
+pt.a0 <- prop.test(a.table[2,1], sum(a.table[1:2,1]), p = 0.5)
+pt.a1 <- prop.test(a.table[2,2], sum(a.table[1:2,2]), p = 0.5)
+
+tr.table <- table(table1_data_na$group, table1_data_na$trauma)
+round(prop.table(tr.table, 2), 3)
+pt.tr0 <- prop.test(tr.table[2,1], sum(tr.table[1:2,1]), p = 0.5)
+pt.tr1 <- prop.test(tr.table[2,2], sum(tr.table[1:2,2]), p = 0.5)
+```
+
+
+Now look at the CIs of the prop tests. These are the proportion of a certain level of a variable that is in group 1 (ie: the post 24/7 group). This is showing the min and max values of the proportion in group 1 (for each level of variable) that are compatible with our data. 
+
+```{r}
+ctas.pt.cis <- data.frame(row.names = colnames(wb_data[c(9:13)]), round(matrix(data = c(pt.ctas1$conf.int, pt.ctas2$conf.int, pt.ctas3$conf.int, pt.ctas4$conf.int, pt.ctas5$conf.int), nrow = 5, ncol = 2, byrow = TRUE), 3))
+colnames(ctas.pt.cis) <- c("2.5%", "97.5%")
+ctas.pt.cis
+
+to.pt.cis <- data.frame(row.names = colnames(wb_data[c(14:16)]), round(matrix(data = c(pt.to1$conf.int, pt.tos2$conf.int, pt.to3$conf.int), nrow = 3, ncol = 2, byrow =TRUE), 3))
+colnames(to.pt.cis) <- c("2.5%", "97.5%")
+to.pt.cis
+
+a.pt.cis <- data.frame(row.names = c("adm0", "adm1"), round(matrix(data = c(pt.a0$conf.int, pt.a1$conf.int), nrow = 2, ncol = 2, byrow =TRUE), 3))
+colnames(a.pt.cis) <- c("2.5%", "97.5%")
+a.pt.cis
+
+tr.pt.cis <- data.frame(row.names = c("trauma0", "trauma1"), round(matrix(data = c(pt.tr0$conf.int, pt.tr1$conf.int), nrow = 2, ncol = 2, byrow =TRUE), 3))
+colnames(tr.pt.cis) <- c("2.5%", "97.5%")
+tr.pt.cis
+
+
+```
+Only CTAS and Trauma have levels where CIs go beyond 2% fromm 0.5. This suggests there may be some sort of relationship between group and CTAS and Trauma, but not a strong one. Notice ctas1 has a CI that goes up to 0.542, this is due to small numbers of ctas1 (this is widest of all CIs).
+
+Todseen, imaging, and adm have at most 1.5% from 0.5 and many levels have chunks of CI that cross or are very close to 0.5. 
+
+I honnestly don't think any of these variables have an important relationship with group. If I saw these numbers in an RCT, I wouldn't bat an eyelash and would be believe that randomization worked. If we really want to force ourselves to think that there might be confounding, maybe trauma and ctas have some sort of relationship with group (ie: imbalance). 
+
+Group is pre vs post 24/7, is there some reason to think that there is a relationship between group and any of the indepenant variables? Eg: once the 24/7 was implemented, more serious cases were sent to that hospital?
+
+Now we can look at the relationship between the variables and outcome. 
+```{r}
+boxplot(wb_data$mdex ~ wb_data$trauma, xlab = "trauma", ylab = "mdex")
+boxplot(wb_data$mdex ~ wb_data$adm, xlab = "adm", ylab = "mdex")
+boxplot(wb_data$mdex ~ wb_data$todseen, xlab = "toseen", ylab = "mdex")
+boxplot(wb_data$mdex ~ wb_data$ctas, xlab = "ctas", ylab = "mdex")
+boxplot(wb_data$mdex ~ wb_data$imaging, xlab = "imaging", ylab = "mdex")
+```
+
+That's a bit hard to see with the outliers, so take them out:
+```{r}
+boxplot(wb_data$mdex ~ wb_data$trauma, xlab = "trauma", ylab = "mdex", outline = F)
+boxplot(wb_data$mdex ~ wb_data$adm, xlab = "adm", ylab = "mdex", outline = F)
+boxplot(wb_data$mdex ~ wb_data$todseen, xlab = "toseen", ylab = "mdex", outline = F)
+boxplot(wb_data$mdex ~ wb_data$ctas, xlab = "ctas", ylab = "mdex", outline = F)
+boxplot(wb_data$mdex ~ wb_data$imaging, xlab = "imaging", ylab = "mdex", outline = F)
+```
+They all seem to have some sort of relationship with the outcome. Adm, CTAS, and trauma have the strongest relationships. That is important to keep in mind. Later, we will see that group has a very weak relationship with mdex, so does that mean we should be hyper-vigilant to even the weakest confounders? If there is evidence that adm, ctas, and trauma have weak relationships with group but strong relationships with the mdex, then maybe we should be concerned that even that weak confounding could distort the relationship between group and mdex due to that relationship being so weak and vulnerable to confounding. When I talked to Dr Jospeh, he said not really. He said that it doesn't look like there is much confounding.
+
+Let's do some univariate regressions, and then do multivariate with Trauma, CTAS, Adm, and Group. Which regression? Poisson would only be appropriate if we transformed the data to counts per time. Dr Jospeh suggested Cox or Weibell. 
+
+**Cox Semi-Parametric Regression**
+```{r}
+
+library(survival)
+surv.mdex <- Surv(wb_data$mdex)
+
+#cox semis, uni, all multi, and just ctas multi
+g.uni.cox <- coxph(data = wb_data, formula = Surv(mdex) ~ group)
+summary(g.uni.cox)
+#2.7% to 5.5% faster
+
+all.multi.cox <- coxph(surv.mdex ~ wb_data$group + wb_data$ctas + wb_data$trauma + wb_data$todseen + wb_data$adm)
+summary(all.multi.cox)
+
+g.c.multi.cox <- coxph(surv.mdex ~ wb_data$group + wb_data$ctas)
+summary(g.c.multi.cox)
+#can also stratify by ctas, that just gives us one coefficient for group, none for ctas
+coxph(surv.mdex ~ wb_data$group + strata(wb_data$ctas))
+
+#if we want to look at sub group analysis, or actually interaction terms
+g.c.int.multi.cox <- coxph(data = wb_data, formula = Surv(mdex) ~ group + group*ctas)
+summary(g.c.int.multi.cox)
+#how is group*ctas1 different than ctas1? Check the interactions of two categorical notes. Oh yeah, ctas on it's own is the effect of ctas regardless of group, ctas*group is the effect of ctas in group 1 (or vice versa, their effect together when both present)
+  #This output tells us that the biggest group effect is in ctas1 (6.7%), then ctas2 and 3 are pretty big (5.4% and 5.9%), then ctas4 sees hardly a group effect, and ctas5 is 2%
+
+all.int.multi.cox <- coxph(data = wb_data, formula = Surv(mdex) ~ group + group*trauma + group*adm)
+summary(all.int.multi.cox)
+```
+That was fun! But before I get too excited, I should probably check the proportional hazards assumption **ominous music play**
+
+
+```{r}
+g.cox.test <- cox.zph(g.uni.cox)
+g.cox.test
+cox.zph(g.c.multi.cox)
+cox.zph(all.multi.cox)
+g.c.int.cox.test <- cox.zph(g.c.int.multi.cox)
+g.c.int.cox.test
+
+library(survminer)
+
+ggcoxzph(g.cox.test)
+
+lm(data = wb_data, mdex ~ group)
+
+result.surv.g0 <- survfit(Surv(wb_data$mdex) ~ wb_data$group, subset = {wb_data$group == 0})
+time.g0 <- result.surv.g0$time
+surv.g0 <- result.surv.g0$surv
+cloglog.g0 <- log(-log(surv.g0))
+logtime.g0 <- log(time.g0)
+
+result.surv.g1 <- survfit(Surv(wb_data$mdex) ~ wb_data$group, subset = {wb_data$group == 1})
+time.g1 <- result.surv.g1$time
+surv.g1 <- result.surv.g1$surv
+cloglog.g1 <- log(-log(surv.g1))
+logtime.g1 <- log(time.g1)
+
+plot(cloglog.g0 ~ logtime.g0, type="s", col="blue", lwd=2)
+lines(cloglog.g1 ~ logtime.g1, col="red", lwd=2, type="s")
+legend("bottomright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red"), lwd=2)
+#they cross a lot. Would need to allow it to vary with time.
+
+#looking for time variable, just following the textbook
+#group.n <- rep(0, nrow(wb_data))
+#group.n[wb_data$group == "1"] <- 1
+#result.247 <- coxph(Surv(wb_data$mdex) ~ group.n)
+#result.247
+
+#result.247.tt <- coxph(Surv(wb_data$mdex) ~ group.n + tt(group.n), tt=function(x,t, ...) x*log(t))
+#result.247.tt
+#gives me an error for infinity
+
+#group.n <- rep(0, nrow(data_under_1000))
+#group.n[data_under_1000$group == "1"] <- 1
+#result.247 <- coxph(Surv(data_under_1000$mdex) ~ group.n)
+#result.247
+
+#result.247.tt <- coxph(Surv(data_under_1000$mdex) ~ group.n + tt(group.n), tt=function(x,t, ...) x*log(t))
+#result.247.tt
+#still can't get it to work, no error, but takes more than 5 minutes to run. Maybe try again later. 
+
+
+#Here's if we want to check with covariates, I tried with a coulple and it still comes out super crossy
+#result.surv.g0 <- survfit(Surv(wb_data$mdex) ~ wb_data$group + wb_data$adm, subset = {wb_data$group == 0})
+#time.g0 <- result.surv.g0$time
+#surv.g0 <- result.surv.g0$surv
+#cloglog.g0 <- log(-log(surv.g0))
+#logtime.g0 <- log(time.g0)
+
+#result.surv.g1 <- survfit(Surv(wb_data$mdex) ~ wb_data$group + wb_data$adm, subset = {wb_data$group == 1})
+#time.g1 <- result.surv.g1$time
+#surv.g1 <- result.surv.g1$surv
+#cloglog.g1 <- log(-log(surv.g1))
+#logtime.g1 <- log(time.g1)
+
+#plot(cloglog.g0 ~ logtime.g0, type="s", col="blue", lwd=2)
+#lines(cloglog.g1 ~ logtime.g1, col="red", lwd=2, type="s")
+#legend("bottomright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red"), lwd=2)
+
+#maybe check from plots for linearity.
+
+```
+Cox assumes proportional hazards. We might not be able to assume this. 
+
+The coxzph() function for each regression gives p values below 0.05, which means the hazard functions are not parrallel (ie: not proportional).
+
+The graph shows them crossing about a billion times. Actually only three times. That's bad. When I follow a method I found in a textbook to determine the time varying hazard ratio, my R either has an "inf" error or works really hard and never finds something. I'm guessing it's because it's trying to estimate a higher order polynomial (recall the lines cross 3 times) and it's just too hard. The time varying hazard ratio would have to switch signs 4 times. That makes me suspicious. Would that be overfitting? Or trying to fit to unmeasured confounders? It might be that the covariates are much stronger determinants than group. Also, if I step back and think about it, the lines cross so much because they are so close together. They are nearly parrallel, but they cross because the effect of group is so weak. 
+
+I also did a cloglog vs logtime plot of each individual ctas level (ie: subgroup check of porportional hazards) and they were equally messy and crossy.
+
+I could also do some plots to check the linearity, but I'll hold off for now since the hazards are so clearly no proportional. 
+
+**Weibel exploration**
+```{r}
+library(Hmisc)
+weib.km <- survfit(Surv(wb_data$mdex) ~ 1)
+
+survEst <- weib.km$surv
+survTime <- weib.km$time 
+logLogSurvEst <- log(-log(survEst)) 
+logSurvTime <- log(survTime)
+
+logSurvTime <- ifelse(logSurvTime == -Inf, 0, logSurvTime)
+logLogSurvEst <- ifelse(logLogSurvEst == Inf, 2.5, logLogSurvEst)
+describe(logSurvTime)
+describe(logLogSurvEst)
+
+plot(logLogSurvEst ~ logSurvTime)
+result.lm <- lm(logLogSurvEst ~ logSurvTime) 
+abline(result.lm)
+#This shows that a weibel is not apporpriate.
+
+```
+Weibell is not appropriate. That plot would need to be linear for Weibell to be appropriate. 
+
+So those two models don't work. Maybe that means no model. We can look at it in Kaplan-Meier. KM does not have an underlying model, which is nice! The drawback is that KM can only tell us about the difference, and cannot really tell us about the magnitude of the difference. 
+
+
+```{r}
+
+#km
+g.km <- survfit(surv.mdex ~ wb_data$group)
+plot(g.km, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex underfrom entire dataset")
+
+survdiff(Surv(wb_data$mdex) ~ wb_data$group)
+#congrats, there's a difference, but what's the magnitude? That's the limitation of KM
+
+data_under_2000 <- subset(wb_data, mdex < 2000)
+
+g.km.2000 <- survfit(Surv(data_under_2000$mdex) ~ data_under_2000$group)
+plot(g.km.2000, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex under 2000 minutes")
+
+data_under_1000 <- subset(wb_data, mdex < 1000)
+
+g.km.1000 <- survfit(Surv(data_under_1000$mdex) ~ data_under_1000$group)
+plot(g.km.1000, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex under 1000 minutes")
+```
+You can see on the full data set and the "under 2000 minutes" data set that the red line dips below the blue line between roughly 500 and 1500 minutes. That means that in that region, the post 24/7 is faster. However, for the "under 500 minutes" dataset, the blue line is below the red line, which means that the pre 24/7 is faster. This is compatible with the first couple of histograms, we see that the pre 24/7 group has more observations with very small mdex. 
+
+We can look as K-M curves for each level of CTAS:
+```{r}
+
+data_ctas1 <- subset(wb_data, ctas ==1)
+data_ctas2 <- subset(wb_data, ctas ==2)
+data_ctas3 <- subset(wb_data, ctas ==3)
+data_ctas4 <- subset(wb_data, ctas ==4)
+data_ctas5 <- subset(wb_data, ctas ==5)
+
+g.km.ctas1 <- survfit(Surv(data_ctas1$mdex) ~ data_ctas1$group)
+plot(g.km.ctas1, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS1")
+
+g.km.ctas2 <- survfit(Surv(data_ctas2$mdex) ~ data_ctas2$group)
+plot(g.km.ctas2, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS2")
+
+g.km.ctas3 <- survfit(Surv(data_ctas3$mdex) ~ data_ctas3$group)
+plot(g.km.ctas3, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS3")
+
+g.km.ctas4 <- survfit(Surv(data_ctas4$mdex) ~ data_ctas4$group)
+plot(g.km.ctas4, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS4")
+
+g.km.ctas5 <- survfit(Surv(data_ctas5$mdex) ~ data_ctas5$group)
+plot(g.km.ctas4, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS5")
+
+```
+A quick visual inspection shows CTAS2 and CTAS3 have the clearest benefits of 24/7. CTAS1 has the switching of effect and CTAS4 and 5 are less clear. Maybe take a look at trunkated data with them as well (ie: less than 1000 and 2000).
+
+
+```{r}
+
+data_ctas1_under1000 <- subset(data_under_1000, ctas ==1)
+data_ctas2_under1000 <- subset(data_under_1000, ctas ==2)
+data_ctas3_under1000 <- subset(data_under_1000, ctas ==3)
+data_ctas4_under1000 <- subset(data_under_1000, ctas ==4)
+data_ctas5_under1000 <- subset(data_under_1000, ctas ==5)
+
+g.km.ctas1 <- survfit(Surv(data_ctas1_under1000$mdex) ~ data_ctas1_under1000$group)
+plot(g.km.ctas1, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS1 under 1000 minutes")
+
+g.km.ctas2 <- survfit(Surv(data_ctas2_under1000$mdex) ~ data_ctas2_under1000$group)
+plot(g.km.ctas2, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS2 under 1000 minutes")
+
+g.km.ctas3 <- survfit(Surv(data_ctas3_under1000$mdex) ~ data_ctas3_under1000$group)
+plot(g.km.ctas3, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS3 under 1000 minutes")
+
+g.km.ctas4 <- survfit(Surv(data_ctas4_under1000$mdex) ~ data_ctas4_under1000$group)
+plot(g.km.ctas4, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS4 under 1000 minutes")
+
+g.km.ctas5 <- survfit(Surv(data_ctas5_under1000$mdex) ~ data_ctas5_under1000$group)
+plot(g.km.ctas4, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of CTAS5 under 1000 minutes")
+```
+If we "zoom in" on the mdex under 1000 for each level of ctas, we can still see the lue line dipping below the erd. Maybe less pronounced than before, but it is still there. 
+
+Turn mdex into tertile categorical and run an ordinal regression. 
+```{r}
+
+library(MASS)
+#cut off for the first tertile
+quantile(wb_data$mdex, probs = 1/3)
+#cut off for the second tertile
+quantile(wb_data$mdex, probs = 2/3)
+
+wb_data$mdex.tert <- cut(wb_data$mdex, breaks = c(-Inf, quantile(wb_data$mdex, probs = 1/3), quantile(wb_data$mdex, probs = 2/3), Inf), labels = c("1","2","3"))
+
+g.uni.ord <- polr(data = wb_data, mdex.tert ~ group)
+coef(g.uni.ord)
+g.uni.ord.cis <- exp(confint(g.uni.ord))
+
+g.c.multi.int.ord <- polr(data = wb_data, mdex.tert ~ group + group*ctas)
+summary(g.c.multi.int.ord)
+g.c.int.cis <- exp(confint(g.c.multi.int.ord))
+
+
+multi.ord <- polr(data = wb_data, mdex.tert ~ group + ctas + adm + trauma)
+coef(g.uni.ord)
+multi.ord.cis <- exp(confint(multi.ord))
+
+quantile(wb_data$mdex, probs = c(1/3, 2/3))
+quantile(wb_data$mdex, probs = 0.95)
+
+
+
+```
+The cut off between each tertile is 164 minutes and 374 minutes.
+
+Here is a univariate ordinal with just group:
+```{r}
+g.uni.ord.cis
+```
+I think this is saying that the intervention makes it more likely to take longer (ie: be in a higher mdex tertile).
+
+Here is looking at group and the interaction with ctas (ie: how ctas modifies the effect of group, I think this is basically a subgroup analysis):
+```{r}
+g.c.int.cis
+
+```
+The CI is wide and covers null, but suggests that the intervention makes it more likely to take less time in ctas1. The effect is  less pronounced in each of the other ctas.
+
+No interaction, just all possible covariates included:
+```{r}
+multi.ord.cis
+```
+Here again has the intervention making it more likely to take longer (ie: be in a higher tertile)
+
+
+Just looking at plain old linear regressions. Not sure if they are appropriate. Need to look more into this and check the assumptions. 
+```{r}
+lm(data = wb_data, mdex ~ group)
+confint(lm(data = wb_data, mdex ~ group))
+
+lm(data = wb_data, mdex ~ group + group*ctas)
+confint(lm(data = wb_data, mdex ~ group + group*ctas))
+```
+With only group, the model describes the effect of group at -17 minutes (ie: 17 minutes faster in post 24/7).
+
+With group and a ctas interaction term, it shows that group has the greatest absolute effect on the ctas1 level (-34 mins). It shows that group has an absolute effect of -28 mins in ctas2 and -22 minutes in ctas3. Not much of an effect in ctas4 or ctas5. The CIs are very wide and cross the null. 
+
+
+```{r}
+
+lm(data = wb_data, mdex ~ group + ctas + trauma + adm)
+lm(data = wb_data, mdex ~ group + ctas + trauma + adm + todseen)
+confint(lm(data = wb_data, mdex ~ group + ctas + trauma + adm))
+
+```
+"Full up" models with most promissing confounders ha group effect at -11 minutes. 
