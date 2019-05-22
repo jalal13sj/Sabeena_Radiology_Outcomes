@@ -248,6 +248,28 @@ boxplot(wb_data$mdex ~ wb_data$imaging, xlab = "imaging", ylab = "mdex", outline
 ```
 They all seem to have some sort of relationship with the outcome. Adm, CTAS, and trauma have the strongest relationships. That is important to keep in mind. Later, we will see that group has a very weak relationship with mdex, so does that mean we should be hyper-vigilant to even the weakest confounders? If there is evidence that adm, ctas, and trauma have weak relationships with group but strong relationships with the mdex, then maybe we should be concerned that even that weak confounding could distort the relationship between group and mdex due to that relationship being so weak and vulnerable to confounding. When I talked to Dr Jospeh, he said not really. He said that it doesn't look like there is much confounding.
 
+Before we look at regressions, lets see if some of the determinants are correlated with each other. 
+
+```{r}
+table1(~ ctas | trauma, data = table1_data_na)
+table1(~ trauma | ctas, data = table1_data_na)
+```
+Would you look at that! Actually pretty balanced (look at overall distribution and see how each one compares). That means it's hard to predict trauma level based on ctas level. That means less correlated. Or does it? I'm confused. 
+
+```{r}
+table1(~ ctas | adm, data = table1_data_na)
+table1(~ adm | ctas, data = table1_data_na)
+
+```
+Less balanced. That means we can semi-predict whether they were admited based on CTAS. I think this means that if we look at Adm or CTAS, we are semi-gretting the same information. 
+
+```{r}
+table1(~ trauma | adm, data = table1_data_na)
+table1(~ adm | trauma, data = table1_data_na)
+```
+So-so. 
+
+
 Let's do some univariate regressions, and then do multivariate with Trauma, CTAS, Adm, and Group. Which regression? Poisson would only be appropriate if we transformed the data to counts per time. Dr Jospeh suggested Cox or Weibell. 
 
 **Cox Semi-Parametric Regression**
@@ -461,37 +483,305 @@ data_ctas3_under1000 <- subset(data_under_1000, ctas ==3)
 data_ctas4_under1000 <- subset(data_under_1000, ctas ==4)
 data_ctas5_under1000 <- subset(data_under_1000, ctas ==5)
 
-g.km.ctas1 <- survfit(Surv(data_ctas1_under1000$mdex) ~ data_ctas1_under1000$group)
+g.km.ctas1.u1000 <- survfit(Surv(data_ctas1_under1000$mdex) ~ data_ctas1_under1000$group)
 plot(g.km.ctas1, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
 legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS1 under 1000 minutes")
 
-g.km.ctas2 <- survfit(Surv(data_ctas2_under1000$mdex) ~ data_ctas2_under1000$group)
+g.km.ctas2.u1000  <- survfit(Surv(data_ctas2_under1000$mdex) ~ data_ctas2_under1000$group)
 plot(g.km.ctas2, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
 legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS2 under 1000 minutes")
 
-g.km.ctas3 <- survfit(Surv(data_ctas3_under1000$mdex) ~ data_ctas3_under1000$group)
+g.km.ctas3.u1000  <- survfit(Surv(data_ctas3_under1000$mdex) ~ data_ctas3_under1000$group)
 plot(g.km.ctas3, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
 legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS3 under 1000 minutes")
 
-g.km.ctas4 <- survfit(Surv(data_ctas4_under1000$mdex) ~ data_ctas4_under1000$group)
+g.km.ctas4.u1000  <- survfit(Surv(data_ctas4_under1000$mdex) ~ data_ctas4_under1000$group)
 plot(g.km.ctas4, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
 legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS4 under 1000 minutes")
 
-g.km.ctas5 <- survfit(Surv(data_ctas5_under1000$mdex) ~ data_ctas5_under1000$group)
+g.km.ctas5.u1000  <- survfit(Surv(data_ctas5_under1000$mdex) ~ data_ctas5_under1000$group)
 plot(g.km.ctas4, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
 legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS5 under 1000 minutes")
 ```
 If we "zoom in" on the mdex under 1000 for each level of ctas, we can still see the lue line dipping below the erd. Maybe less pronounced than before, but it is still there. 
 
-Turn mdex into tertile categorical and run an ordinal regression. 
+
+Subgroup of Adm:
 ```{r}
 
+data_adm0 <- subset(wb_data, adm ==0)
+data_adm1 <- subset(wb_data, adm ==1)
+
+data_adm0_under1000 <- subset(data_under_1000, adm ==0)
+data_adm1_under1000 <- subset(data_under_1000, adm ==1)
+
+
+g.km.adm0 <- survfit(Surv(data_adm0$mdex) ~ data_adm0$group)
+plot(g.km.adm0, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of Adm = 0 all data")
+
+g.km.adm0.u1000 <- survfit(Surv(data_adm0_under1000$mdex) ~ data_adm0_under1000$group)
+plot(g.km.adm0.u1000, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of Adm = 0 under 1000 minutes")
+
+g.km.adm1 <- survfit(Surv(data_adm1$mdex) ~ data_adm1$group)
+plot(g.km.adm1, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
+title("K-M for mdex of Adm = 1 all data")
+
+g.km.adm1.u1000 <- survfit(Surv(data_adm1_under1000$mdex) ~ data_adm1_under1000$group)
+plot(g.km.adm1.u1000, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of Adm = 1 under 1000 minutes")
+
+```
+Blue is below for Adm = 0 even when look at all the data (though that is very close). Red is below for both plots of Adm = 1. WHAT DOES THIS MEAN?!?! Pre 24/7 is faster when Adm = 0 and post 24/7 is faster when Adm = 1?
+
+
+Subgroup of Trauma:
+```{r}
+data_tr0 <- subset(wb_data, trauma ==0)
+data_tr1 <- subset(wb_data, trauma ==1)
+
+data_tr0_under1000 <- subset(data_under_1000, trauma ==0)
+data_tr1_under1000 <- subset(data_under_1000, trauma ==1)
+
+
+g.km.tr0 <- survfit(Surv(data_tr0$mdex) ~ data_tr0$group)
+plot(g.km.tr0, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of Trauma = 0 all data")
+
+g.km.tr0.u1000 <- survfit(Surv(data_tr0_under1000$mdex) ~ data_tr0_under1000$group)
+plot(g.km.tr0.u1000, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of Trauma = 0 under 1000 minutes")
+
+g.km.tr1 <- survfit(Surv(data_tr1$mdex) ~ data_tr1$group)
+plot(g.km.tr1, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
+title("K-M for mdex of Trauma = 1 all data")
+
+g.km.tr1.u1000 <- survfit(Surv(data_tr1_under1000$mdex) ~ data_tr1_under1000$group)
+plot(g.km.tr1.u1000, xlab="Time in Minutes", ylab="Process Completion Probability", col=c("blue", "red"), lwd=2)
+legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+title("K-M for mdex of Trauma = 1 under 1000 minutes")
+
+```
+Trauma is like ctas, it is red below in the 500 - 2000 minute range. Then when we just look at the 1000 fasted minutes, the blue dips below in the under 500 minute area. 
+
+
+
+Just looking at plain old linear regressions. Not sure if they are appropriate. Need to look more into this and check the assumptions. The distribution of mdex is clearly not normal (wicked long tail like a jaguar), but maybe there are enough observations for us to feel comfortable that the CLT has kicked in?
+```{r}
+g.uni <- lm(data = wb_data, mdex ~ group)
+confint(g.uni)
+
+g.c.int.multi <- lm(data = wb_data, mdex ~ group + group*ctas)
+confint(g.c.int.multi)
+```
+With only group, the model describes the effect of group at -17 minutes (ie: 17 minutes faster in post 24/7).
+
+With group and a ctas interaction term, it shows that group has the greatest absolute effect on the ctas1 level (-34 mins). It shows that group has an absolute effect of -28 mins in ctas2 and -22 minutes in ctas3. Not much of an effect in ctas4 or ctas5. The CIs are very wide and all of them cross the null. 
+
+Another way to do subgroup analysis is to do linear regressions on each subset of the data.
+```{r}
+lm(data = subset(wb_data, ctas == 1), mdex ~ group)
+lm(data = subset(wb_data, ctas == 2), mdex ~ group)
+lm(data = subset(wb_data, ctas == 3), mdex ~ group)
+lm(data = subset(wb_data, ctas == 4), mdex ~ group)
+lm(data = subset(wb_data, ctas == 5), mdex ~ group)
+
+confint(lm(data = subset(wb_data, ctas == 3), mdex ~ group))
+```
+You can see this gives the same Point Estimates as the single regression with interaction terms (ie: the group coefficient plus each specific interaction term for the subgroup of interest). Note that the confidence interval is much more narrow with the individuals linear regressions than it is for the interaction term regression. I'm not sure which one is a more accurate representation of the uncertainty, but my instinct is that the wider CIs of the regression with interaction terms is a more honnest/accurate representation of the uncertainty.
+
+Can check some other multi regressions and the bic.glm for fun. Further below I check the assumptions 
+```{r}
 library(MASS)
+
+lm(data = wb_data, mdex ~ group + ctas + trauma + adm)
+summary(lm(data = wb_data, mdex ~ group + ctas + trauma + adm + todseen))
+confint(lm(data = wb_data, mdex ~ group + ctas + trauma + adm))
+
+bic.linear <- bic.glm.formula(data = wb_data, f = mdex ~ group + ctas + trauma + adm + todseen, glm.family = gaussian())
+summary(bic.linear)
+```
+"Full up" model has group effect at -11 minutes. The full model has a higher R (obvously), but recall that's not the aim. 
+
+Checking assumptions of linear regressions
+```{r}
+
+uni.resid <- data.frame(g.uni$residuals, wb_data$group)
+head(uni.resid)
+
+ggplot(data = uni.resid, aes(x = g.uni.residuals)) + 
+  geom_histogram() + xlim(0, 4000) +
+  labs(title = "Univariate Linear Regression Residuals", x = "lm(mdex ~ group) Residuals", y = "Count")
+
+
+int.resid <- data.frame(g.c.int.multi$residuals, wb_data$group)
+head(int.resid)
+
+ggplot(data = int.resid, aes(x = g.c.int.multi.residuals)) + 
+  geom_histogram() + xlim(0, 4000) +
+  labs(title = "Multivariate Interaction Terms Linear Regression Residuals", x = "lm(mdex ~ group + group*ctas) Residuals", y = "Count")
+
+plot(wb_data$group, uni.resid$g.uni.residuals)
+
+```
+
+Relationship is linear between X and Y , i.e., relation is a straight line: Dummy variables (ie: categorical) meet the assumption of linearity by definition, because they creat two data points, and two points define a straight line. There is no such thing as a non-linear relationship for a single variable with only two values. Dummy variables need no linearity assumptions, as they are already linear.
+
+The “errors” (also known as “residuals”) are independent N(0, σ2): Not very normal at all. See the histograms above. 
+
+σ2 is constant throughout the range: Not sure how to check with with dummy variables. 
+
+Conclusion: We can probably assume the CLT has kicked in and the linear regression is pretty robust. That being said, the residuals aren't normally distributed. We can take the information from the linear regression with a grain of salt. We see some effect due to group and it appears to interact with CTAS. We shouldn't get too excited about that precision. Maybe we can look at other models to see what they say. 
+
+Could look at doing a log transformation of mdex. This would be a log-linear model. 
+```{r}
+head(wb_data)
+wb_data$log.mdex <- log(wb_data$mdex)
+log(1)
+
+histogram(data = wb_data, wb_data$log.mdex)
+
+#there are some zero values for mdex. See if I can substitute 1 for zero. 
+wb_data$log.mdex <- ifelse(wb_data$log.mdex == -Inf, 0, wb_data$log.mdex)
+
+describe(wb_data$log.mdex)
+
+g.log.uni <- lm(data = wb_data, formula = log.mdex ~ group)
+g.log.uni
+summary(g.log.uni)
+exp(g.log.uni$coefficients)
+exp(confint(g.log.uni))
+#is the intercept allowed to be that different from the actual mean and median? Is that a by-product of the model fit or something?
+#notice the summary of the R2, which is attrocious. I guess that would be expected. The "explanatory" variable of group is super weak and explains very little of the variance. Recall that the aim of this exercise is to see what efect group has, not to predict outcome. 
+
+uni.log.resid <- data.frame(g.log.uni$residuals, wb_data$group)
+head(uni.log.resid)
+
+ggplot(data = uni.log.resid, aes(x = g.log.uni.residuals)) + 
+  geom_histogram() +
+  labs(title = "Univariate Log-Linear Regression Residuals", x = "lm(log(mdex) ~ group) Residuals", y = "Count")
+#well shit, that loooks great! This satisfies the assumption that the errors are independent
+
+plot(wb_data$group, g.log.uni$residuals)
+#this looks good as well. The determinant is categorical, so we are just for the spread to be similar for each level. This looks to be satisfied. The variance appears to be constant accross the range. 
+
+```
+Now the 3 assumptions are much more respected (see the graphs). In this case, group doesn't seem to have an effect. 
+
+Just messing
+```{r}
+d.frame <- data.frame(y = c(exp(rnorm(40, mean = 5, sd = 1)), exp(rnorm(40, mean = 6, sd = 1))), x = c(rep(1, 40), rep(0, 40)))
+d.frame
+#the mean of group 0 is 
+mean(d.frame$y)
+mean(subset(d.frame, x == 1)$y)
+#240
+log(240)
+
+mean(subset(d.frame, x == 0)$y)
+#44647
+log(44647)
+
+44647/240
+
+
+plot(d.frame$x, d.frame$y)
+histogram(d.frame$y, xlim = c(0, 1000), breaks = 200)
+histogram(log(d.frame$y))
+
+ggplot(data = d.frame, aes(x = y)) + geom_histogram()
+ggplot(data = d.frame, aes(x = log(y))) + geom_histogram()
+
+lm.mss <- lm(data = d.frame, y ~ x)
+lm.mss
+histogram(lm.mss$residuals)
+
+
+log.lm.mss <- lm(data = d.frame, log(y) ~ x)
+log.lm.mss
+histogram(log.lm.mss$residuals)
+#so the intercept here is the center of the normal dist of the numbers, it's not the average number. Is this because the actual data peaks around 100, wearas an exponential curve goes to infinity? That means an exponential curve has a lot more small numbers than the actual data here so when it tries to estimate the average it goes too low? Maybe. Still, the important thing is the beta, that is the aim of this analysis. \
+exp(log.lm.mss$coefficients)
+exp(confint(log.lm.mss))
+exp(-5.451)*44647
+0.3978579*694
+
+#this is what the mean should be for group 0
+exp(5.9736)
+
+```
+
+Now look at log-linear with a ctas interaction term:
+```{r}
+
+g.log.ctas.int <- lm(data = wb_data, formula = log.mdex ~ group + ctas*group)
+g.log.ctas.int
+summary(g.log.ctas.int)
+exp(g.log.ctas.int$coefficients)
+exp(confint(g.log.ctas.int))
+
+log.int.resid <- data.frame(g.log.ctas.int$residuals, wb_data$group)
+head(log.int.resid)
+
+ggplot(data = log.int.resid, aes(x = g.log.ctas.int.residuals)) + 
+  geom_histogram() + 
+  labs(title = "Multivariate Interaction Terms Linear Regression Residuals", x = "lm(mdex ~ group + group*ctas) Residuals", y = "Count")
+
+plot(wb_data$group, log.int.resid$g.log.ctas.int.residuals)
+#another good looking couple of plots. 
+
+```
+Like in the linear interaction model, group seems to have the stronget effect in CTAS1 (3.8%) and some effect in CTAS2 and 3 (1-2%). Not much of an effect/reverse effect in CTAS4 and 5. Keep in mind, the CIs are all wide and cover the null. All inconclusive, though there may be some interesting effects in CTAS1, and possibly in 2 and 3 (though evidence in 2 and 3 is much less strong).  
+
+Shotgun a bunch of other models and do a bic.
+```{r}
+bic.log.linear <- bic.glm.formula(data = wb_data, f = log.mdex ~ group + ctas + trauma + adm + todseen, glm.family = gaussian())
+summary(bic.log.linear)
+exp(bic.log.linear$mle)
+
+g.log.all.multi <- lm(data = wb_data, formula = log.mdex ~ group + ctas + trauma + adm + todseen)
+g.log.all.multi
+summary(g.log.all.multi)
+exp(g.log.all.multi$coefficients)
+exp(confint(g.log.all.multi))
+
+g.log.adm.int <- lm(data = wb_data, formula = log.mdex ~ group + group*adm)
+g.log.adm.int
+summary(g.log.adm.int)
+exp(g.log.adm.int$coefficients)
+exp(confint(g.log.adm.int))
+1.079*0.8559
+
+g.log.adm.multi <- lm(data = wb_data, formula = log.mdex ~ group + adm)
+g.log.adm.multi
+summary(g.log.adm.multi)
+exp(g.log.adm.multi$coefficients)
+exp(confint(g.log.adm.multi))
+
+
+```
+The bic keeps group in and says it actaully makes the time slower. The "everything in" also says that group makes it slower. I don't really think these are good models for describing the effect of group, but there they are. 
+
+Doing an interaction term with adm shows that when not admied, the group makes it slower. When admitted, the group makes it faster. 
+
+
+
+We can turn mdex into tertile categorical and run an ordinal regression.
+```{r}
+
 #cut off for the first tertile
 quantile(wb_data$mdex, probs = 1/3)
 #cut off for the second tertile
@@ -539,25 +829,74 @@ multi.ord.cis
 ```
 Here again has the intervention making it more likely to take longer (ie: be in a higher tertile)
 
+"It is a common belief among practitioners who do not study bias and efficiency in depth that the presence of non-linearity should be dealt with by chopping continuous variables into intervals. Nothing could be more disas-
+trous."
 
-Just looking at plain old linear regressions. Not sure if they are appropriate. Need to look more into this and check the assumptions. 
-```{r}
-lm(data = wb_data, mdex ~ group)
-confint(lm(data = wb_data, mdex ~ group))
-
-lm(data = wb_data, mdex ~ group + group*ctas)
-confint(lm(data = wb_data, mdex ~ group + group*ctas))
-```
-With only group, the model describes the effect of group at -17 minutes (ie: 17 minutes faster in post 24/7).
-
-With group and a ctas interaction term, it shows that group has the greatest absolute effect on the ctas1 level (-34 mins). It shows that group has an absolute effect of -28 mins in ctas2 and -22 minutes in ctas3. Not much of an effect in ctas4 or ctas5. The CIs are very wide and cross the null. 
-
+BACK TO POISSON?!?!?
+Am I crazy? Maybe. So the thing I was doing incorrectly with poisson before was throwing all the mdex times in as the outcome. For it to be analyzed as poisson, the outcome would need to be counts. This would mean creating catergories of length of mdex times and counting how many occured in that category. 
 
 ```{r}
+#find out where 99.9% of the data happens, this is so I can just stop binning at a certain point
+quantile(wb_data$mdex, probs = 0.999)
 
-lm(data = wb_data, mdex ~ group + ctas + trauma + adm)
-lm(data = wb_data, mdex ~ group + ctas + trauma + adm + todseen)
-confint(lm(data = wb_data, mdex ~ group + ctas + trauma + adm))
+wb_data$mdex.counts <- cut(wb_data$mdex, breaks = c(-Inf, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000, Inf), labels = c("0:100", "101:200", "201:300", "301:400", "401:500", "501:600", "601:700", "701:800", "801:900", "901:1000", "1001:1100", "1101:1200", "1201:1300", "1301:1400", "1401:1500", "1501:1600",  "1601:1700", "1701:1800", "1801:1900", "1901:2000", "2001:2100", "2101:2200", "2201:2300", "2301:2400", "2401:2500", "2501:2600",  "2601:2700", "2701:2800", "2801:2900", "2901:3000","Over 3000"))
+
+#try making the categories as integers
+wb_data$mdex.counts <- cut(wb_data$mdex, breaks = c(-Inf, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000, Inf), labels = c(1:31))
+
+subset(wb_data, mdex == 101)
+
+describe(wb_data$mdex.counts)
+pois_data <- as.data.frame(table(wb_data$group, wb_data$mdex.counts))
+names(pois_data)[1] <- "Group"
+names(pois_data)[2] <- "Mdex_Time"
+names(pois_data)[3] <- "Reports"
+head(pois_data)
+
+#average number of reports per time category for the pre group
+mean(subset(pois_data, Group == 0)$Reports)
+
+#rate of reports per time category overall 
+sum(pois_data$Reports)/nrow(pois_data)
+
+
+ggplot(data = pois_data, aes(x = Mdex_Time, y = Reports, group = Group, color = Group)) + geom_line() + geom_point() + theme(axis.text.x = element_text(angle = -45))
+
+lambda.1 <- mean(subset(wb_data, group == 1)$mdex)
+lambda.0 <- mean(subset(wb_data, group == 0)$mdex)
+
+#oh snap, the sd is close to the mean
+sd(subset(wb_data, group == 1)$mdex)
+sd(subset(wb_data, group == 0)$mdex)
+#oh wait.......it's the varaince that is supposed to equal the mean. So an order of magnitude off. Variance is much bigger
+var(subset(wb_data, group == 1)$mdex)
+var(subset(wb_data, group == 0)$mdex)
+
+dpois((1:30)*100, lambda = lambda.1)
+dpois((1:30)*100, lambda = lambda.0)
+
+describe(pois_data)
+
+str(pois_data)
+pois_data$Mdex_Time <- as.numeric(pois_data$Mdex_Time)
+
+#my intercept is the average number of reports per category. Is that even interesting? Or interpretable? My output is 
+glm(data = pois_data, formula = Mdex_Time ~ Group, family = poisson)
+
+nb.g.uni <- glm.nb(data = pois_data, formula = Mdex_Time ~ Group)
+summary(nb.g.uni)
+exp(nb.g.uni$coefficients)
+exp(confint(nb.g.uni))
+nb.g.uni
+
+
+wb_data$mdex.counts <- as.numeric(wb_data$mdex.counts)
+nb.g.uni <- glm.nb(data = wb_data, formula = mdex.counts ~ group)
+summary(nb.g.uni)
+exp(nb.g.uni$coefficients)
+exp(confint(nb.g.uni))
+nb.g.uni
+
 
 ```
-"Full up" models with most promissing confounders ha group effect at -11 minutes. 
+
