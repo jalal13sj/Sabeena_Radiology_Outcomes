@@ -9,3 +9,5 @@ Did some freq regressions without dealing with missing data
 Re-did it with the short data
 
 create r markdown
+
+Imaging = 1 data analysis
