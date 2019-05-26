@@ -52,6 +52,7 @@ We can do a Mann-Whitney U test (we don't have censoring and this test does not 
 
 Note: The post intervention median outcome (Md time, mdex) was *higher* than the pre intervention median. The post intervention mean outcome was lower than the pre intervention mean. 
 
+
 ##Models
 The p value from the Mann-Whitney U test is limited in describing what's going on, so I tried some models out. I had a tough time fitting the data to a model. I think Kaplan-Meier survival analysis is probably the safest of apporaches I take below because it doesn't require an assumption of an underlying model. The other models are included as an exploration.
 
@@ -66,7 +67,7 @@ I also did an ordinal logistic regression.
 ##Effect of group: 
 The Mann-Whitney U test says that there is no effect due to group. Looking at the KM and other analyses, at most, the effect of group seems to be very small. It seem that the pre intervention group usually has a smaller median mdex, but that the post intervention gets "faster" after hitting the median (ie: it is quicker for "longer" cases). As an analogy, the pre intervention group is like a sprinter is quick and has the fastest 100 meter time and the post intervention group is slower out of the blocks, but wins the 400 meter race with a strong back half of the race. The intervention group is slower for mdex times under about ~400 minutes, and then it becomes faster.
 
-Sub-group analysis: Intervention may increase the mdex (mean and median) time for trauma patients and patients that are not admitted. The intervention may decrease mdex time in admitted patients. There may be subgroup effects in CTAS and Todseen, but it's hard to say.
+Sub-group analysis: Intervention may increase the mdex (mean and median) time for trauma patients and patients that are not admitted. The intervention may decrease mdex time in admitted patients. There may be subgroup effects in CTAS and Todseen, but it's hard to say. These subgroup results are consistent across most methods. 
 
 
 ```{r}
@@ -122,7 +123,7 @@ library(ggplot2)
 
 ```
 
-**Distribution of turn around time (mdex)**
+##Distribution of turn around time (mdex)
 
 The first plot is all the data and the following two plots are zoomed in on the smaller values (notice the x axis)
 ```{r}
@@ -174,7 +175,7 @@ ggplot(data = wb_data_na, aes(x = group, y = mdex)) + geom_boxplot(outlier.shape
 It doesn't look like a huge difference between the groups, but post looks a little higher.  
 
 
-**Table 1 Descriptives and Potential Confounding**
+##Table 1 Descriptives and Potential Confounding
 
 Let's look into potential confounders. See which variables appear to have a relationship with the intervention (group) and with the outcome (turn around time, labelled "mdex"). The third criteria for confounding is whether it is on the causal path. 
 
@@ -339,7 +340,8 @@ table1(~ adm | trauma, data = table1_data_na)
 ```
 So-so. 
 
-**Mann-Whitney U test**
+##Mann-Whitney U test
+
 There is no censoring and I don't think that there is confounding, so would could simply do a Mann-Witney U test between group = 0 and group = 1.
 
 Two data samples are independent if they come from distinct populations and the samples do not affect each other. Using the Mann-Whitney U test (aka Mann-Whitney-Wilcoxon Test), we can decide whether the population distributions are identical without assuming them to follow the normal distribution.
@@ -349,11 +351,98 @@ The null hypothesis is that they are identical and the alternative is that they 
 wilcox.test(wb_data$mdex~ wb_data$group)
 
 ```
-This gives a p value of 0.078, so we don't have enough evidence to reject the null that the populations are identical. We have a huge sample size, so it is not for lack of observations. If there is a difference between the populations, it's small. Recall the median mdex for the post 24/7 intervention (group = 1) is *higher* than the median for the pre 24/7 intervention group. The mean of the post 24/7 group is lower. This is a right skewed data set so the median is probably a better measure of center. 
+This gives a p value of 0.078, so we don't have enough evidence to reject the null that the populations are identical. We have a huge sample size, so it is not for lack of observations. If there is a difference between the populations, it's small. Recall the median mdex for the post 24/7 intervention (group = 1) is *higher* than the median for the pre 24/7 intervention group. The mean of the post 24/7 group is lower. This is a right skewed data set so the median is probably a better measure of center. I still need to do a subgroup analysis of this. 
+
+Adm subgroup:
+```{r}
+wilcox.test(subset(wb_data, adm == 1)$mdex ~subset(wb_data, adm == 1)$group)
+wilcox.test(subset(wb_data, adm == 0)$mdex ~subset(wb_data, adm == 0)$group)
+
+```
+When stratified by adm, the subgroups come from different populations (ie: there is an effect due to the intervetion). Recall the descriptive stats, median and mean mdex is *longer* in the post 24/7 group for patients that are not admitted. Median and mean mdex is shorter in the post 24/7 group for patients that are not admitted. 
+
+
+```{r}
+wilcox.test(subset(wb_data, trauma == 1)$mdex ~subset(wb_data, trauma == 1)$group)
+wilcox.test(subset(wb_data, trauma == 0)$mdex ~subset(wb_data, trauma == 0)$group)
+
+```
+When stratified by trauma, only trauma patients come from different populations (ie: there is an effect due to the intervention in the trauma subgroup). Non-trauma patients in both pre and post groups come from the same population. Median and mean mdex is *longer* in the post 24/7 group for trauma patients.
+
+```{r}
+wilcox.test(subset(wb_data, ctas == 1)$mdex ~subset(wb_data, ctas == 1)$group)
+wilcox.test(subset(wb_data, ctas == 2)$mdex ~subset(wb_data, ctas == 2)$group)
+wilcox.test(subset(wb_data, ctas == 3)$mdex ~subset(wb_data, ctas == 3)$group)
+wilcox.test(subset(wb_data, ctas == 4)$mdex ~subset(wb_data, ctas == 4)$group)
+wilcox.test(subset(wb_data, ctas == 5)$mdex ~subset(wb_data, ctas == 5)$group)
+
+```
+
+When stratified by ctas, only ctas4 patients come from different populations (ie: there is an effect due to the intervention in the trauma subgroup). CTAS1, CTAS2, CTAS3, and CTAS5 patients in both pre and post groups come from the same population. Median mdex is shorter but mean mdex is longer in the post 24/7 group of CTAS4 patients. 
+
+```{r}
+wilcox.test(subset(wb_data, todseen == 1)$mdex ~subset(wb_data, todseen == 1)$group)
+wilcox.test(subset(wb_data, todseen == 2)$mdex ~subset(wb_data, todseen == 2)$group)
+wilcox.test(subset(wb_data, todseen == 3)$mdex ~subset(wb_data, todseen == 3)$group)
+
+```
+When stratified by todseen, only todseen2 and todseen3 (evening and night) patients come from different populations (ie: there is an effect due to the intervention in the trauma subgroup). Todseen 1 patients (morning) in both pre and post groups come from the same population. The median mdex times are shorter but mean mdex times are longer in the post 24/7 group of both todseen2 and todeen3 patients.  
+
+
+Table to summarize the Mannn-Whitney U subgroup tests:
+```{r}
+
+adm.ctr <- rbind(c(mean(subset(wb_data, adm == 0 & group == 0)$mdex), mean(subset(wb_data, adm == 0 & group == 1)$mdex)), 
+               c(median(subset(wb_data, adm == 0 & group == 0)$mdex), median(subset(wb_data, adm == 0 & group == 1)$mdex)), 
+               c(mean(subset(wb_data, adm == 1 & group == 0)$mdex), mean(subset(wb_data, adm == 1 & group == 1)$mdex)), 
+               c(median(subset(wb_data, adm == 1 & group == 0)$mdex), median(subset(wb_data, adm == 1 & group == 1)$mdex)))
+
+trauma.ctr <- rbind(c(mean(subset(wb_data, trauma == 0 & group == 0)$mdex), mean(subset(wb_data, trauma == 0 & group == 1)$mdex)), 
+                  c(median(subset(wb_data, trauma == 0 & group == 0)$mdex), median(subset(wb_data, trauma == 0 & group == 1)$mdex)), 
+                  c(mean(subset(wb_data, trauma == 1 & group == 0)$mdex), mean(subset(wb_data, trauma == 1 & group == 1)$mdex)), 
+                  c(median(subset(wb_data, trauma == 1 & group == 0)$mdex), median(subset(wb_data, trauma == 1 & group == 1)$mdex)))
+
+ctas.ctr <- rbind(c(mean(subset(wb_data, ctas == 1 & group == 0)$mdex), mean(subset(wb_data, ctas == 1 & group == 1)$mdex)), c(median(subset(wb_data, ctas == 1 & group == 0)$mdex), median(subset(wb_data, ctas == 1 & group == 1)$mdex)), 
+                c(mean(subset(wb_data, ctas == 2 & group == 0)$mdex), mean(subset(wb_data, ctas == 2 & group == 1)$mdex)), c(median(subset(wb_data, ctas == 2 & group == 0)$mdex), median(subset(wb_data, ctas == 2 & group == 1)$mdex)), 
+                c(mean(subset(wb_data, ctas == 3 & group == 0)$mdex), mean(subset(wb_data, ctas == 3 & group == 1)$mdex)), c(median(subset(wb_data, ctas == 3 & group == 0)$mdex), median(subset(wb_data, ctas == 3 & group == 1)$mdex)), 
+                c(mean(subset(wb_data, ctas == 4 & group == 0)$mdex), mean(subset(wb_data, ctas == 4 & group == 1)$mdex)), c(median(subset(wb_data, ctas == 4 & group == 0)$mdex), median(subset(wb_data, ctas == 4 & group == 1)$mdex)),  
+                c(mean(subset(wb_data, ctas == 5 & group == 0)$mdex), mean(subset(wb_data, ctas == 5 & group == 1)$mdex)), c(median(subset(wb_data, ctas == 5 & group == 0)$mdex), median(subset(wb_data, ctas == 5 & group == 1)$mdex)))
+
+todseen.ctr <- rbind(c(mean(subset(wb_data, todseen == 1 & group == 0)$mdex), mean(subset(wb_data, todseen == 1 & group == 1)$mdex)), 
+                     c(median(subset(wb_data, todseen == 1 & group == 0)$mdex), median(subset(wb_data, todseen == 1 & group == 1)$mdex)), 
+                     c(mean(subset(wb_data, todseen == 2 & group == 0)$mdex), mean(subset(wb_data, todseen == 2 & group == 1)$mdex)), 
+                     c(median(subset(wb_data, todseen == 2 & group == 0)$mdex), median(subset(wb_data, todseen == 2 & group == 1)$mdex)), 
+                     c(mean(subset(wb_data, todseen == 3 & group == 0)$mdex), mean(subset(wb_data, todseen == 3 & group == 1)$mdex)), 
+                     c(median(subset(wb_data, todseen == 3 & group == 0)$mdex), median(subset(wb_data, todseen == 3 & group == 1)$mdex)))
+
+all.ctr <- rbind(adm.ctr, trauma.ctr, ctas.ctr, todseen.ctr)
+
+all.wh.p <- c(wilcox.test(subset(wb_data, adm == 1)$mdex ~subset(wb_data, adm == 1)$group)$p.value, NULL, wilcox.test(subset(wb_data, adm == 0)$mdex ~subset(wb_data, adm == 0)$group)$p.value, NULL, wilcox.test(subset(wb_data, trauma == 1)$mdex ~subset(wb_data, trauma == 1)$group)$p.value, NULL, wilcox.test(subset(wb_data, trauma == 0)$mdex ~subset(wb_data, trauma == 0)$group)$p.value, NULL, wilcox.test(subset(wb_data, ctas == 1)$mdex ~subset(wb_data, ctas == 1)$group)$p.value, NULL, wilcox.test(subset(wb_data, ctas == 2)$mdex ~subset(wb_data, ctas == 2)$group)$p.value, NULL, wilcox.test(subset(wb_data, ctas == 3)$mdex ~subset(wb_data, ctas == 3)$group)$p.value, NULL, wilcox.test(subset(wb_data, ctas == 4)$mdex ~subset(wb_data, ctas == 4)$group)$p.value, NULL, wilcox.test(subset(wb_data, ctas == 5)$mdex ~subset(wb_data, ctas == 5)$group)$p.value, NULL, wilcox.test(subset(wb_data, todseen == 1)$mdex ~subset(wb_data, todseen == 1)$group)$p.value, NULL, wilcox.test(subset(wb_data, todseen == 2)$mdex ~subset(wb_data, todseen == 2)$group)$p.value, NULL, wilcox.test(subset(wb_data, todseen == 3)$mdex ~subset(wb_data, todseen == 3)$group)$p.value, NULL)
+
+all.w.df <- as.data.frame(cbind(c("adm0", "", "adm1", "", "trauma0", "", "trauma1", "", "ctas1", "", "ctas2", "", "ctas3", "", "ctas4", "", "ctas5", "", "todseen1", "", "todseen2", "", "todseen3", ""), p.value = rep(all.wh.p, each = 2), rep(c("mean", "median"), 12), all.ctr))
+
+
+all.w.df$V5 <- round(as.numeric(as.character(all.w.df$V5)), 1)
+all.w.df$V4 <- round(as.numeric(as.character(all.w.df$V4)), 1)
+all.w.df$p.value <- round(as.numeric(as.character(all.w.df$p.value)), 5)
+all.w.df$improvement <- ifelse(all.w.df[ , 4] - all.w.df[ , 5] > 0, "Yes", "No")
+
+colnames(all.w.df) <- c("Subgroup", "M-W p value", "Measure of Center", "Pre 24/7", "Post 24/7", "Improvement?")
+
+
+library(formattable)
+formattable(all.w.df)
+
+
+```
+###Overall Mann-Whitney U Test results
+
+No effect on mdex due to intervention, though the means and medians suggest that the intervention may even increase mdex time. The clearest subgroup effects (p value < 0.05 and a change in mean and median in the same direction) are in Adm0, Adm1, and Trauma1. In Adm0 and Trauma1, the mean and median mdex time increased. In Adm1, the mdex time decreased. 
 
 A simple p value doesn't tell us much apart from the probability of getting out data given the null is true. Maybe try to fit some models and see if we can get more information out of it. 
 
-**Cox Semi-Parametric Regression**
+
+##Cox Semi-Parametric Regression
 ```{r}
 
 library(survival)
@@ -381,7 +470,7 @@ summary(g.c.int.multi.cox)
 all.int.multi.cox <- coxph(data = wb_data, formula = Surv(mdex) ~ group + group*trauma + group*adm)
 summary(all.int.multi.cox)
 ```
-That was fun! The univariate model suggests that mdex is 2.7% to 5.5% faster in the intervention group. But before I get too excited, I should probably check the proportional hazards assumption **play ominous music**
+That was fun! The univariate model suggests that mdex is 2.7% to 5.5% faster in the intervention group. But before I get too excited, I should probably check the proportional hazards assumption **ominous music plays in the background**
 
 
 ```{r}
@@ -465,7 +554,7 @@ I also did a cloglog vs logtime plot of each individual ctas level (ie: subgroup
 
 I could also do some plots to check the linearity, but I'll hold off for now since the hazards are so clearly no proportional. 
 
-**Weibel exploration**
+##Weibel model
 ```{r}
 library(Hmisc)
 weib.km <- survfit(Surv(wb_data$mdex) ~ 1)
@@ -490,7 +579,7 @@ Weibell is not appropriate. That plot would need to be linear for Weibell to be 
 
 So those two models don't work. Maybe that means no model. We can look at it in Kaplan-Meier. KM does not have an underlying model, which is nice! The drawback is that KM can only tell us about the difference, and cannot really tell us about the magnitude of the difference. 
 
-**Kaplan-Meier**
+##Kaplan-Meier
 ```{r}
 
 library(ggfortify)
@@ -735,11 +824,13 @@ Todseen = 3: Post is below until about 350, after which pre is slightly below un
 
 KM Todseen subgroup conclusions: The intervention may reduce median mdex in Todseen = 1, but is inconclusive. The intervention increases median mdex in Todseen = 2 and 3.
 
-*Overall KM results*: Very small differences in mdex between the groups. It seem that the pre intervention group usually has a smaller median mdex, but that the post intervention gets "faster" after hitting the median (ie: it is quicker for "longer" cases). The pre intervention group is the sprinter that has the fastest 100m and the post intervention group is slower out of the blocks, but wins the 400m with a strong back half of the race. The intervention is slower up until about ~400 minutes, and then it becomes faster.
+###Overall KM results
+
+Very small differences in mdex between the groups. It seem that the pre intervention group usually has a smaller median mdex, but that the post intervention gets "faster" after hitting the median (ie: it is quicker for "longer" cases). The pre intervention group is the sprinter that has the fastest 100m and the post intervention group is slower out of the blocks, but wins the 400m with a strong back half of the race. The intervention is slower up until about ~400 minutes, and then it becomes faster.
 
 Intervention may increase the mdex (mean and median) time for trauma patients and patients that are not admitted. The intervention may decrease mdex time in admitted patients. There may be subgroup effects in CTAS and Todseen, but it's hard to say.
 
-**Linear Regression**
+##Linear Regression
 
 Just looking at plain old linear regressions. The distribution of mdex is clearly not normal (long right tail), but maybe there are enough observations for us to feel comfortable that the CLT has kicked in.
 ```{r}
@@ -843,6 +934,8 @@ The “errors” (also known as “residuals”) are independent N(0, σ2): Not 
 Conclusion: We can probably assume the CLT has kicked in and the linear regression is pretty robust. That being said, the residuals aren't normally distributed. We can take the information from the linear regression with a grain of salt. We see some effect due to group and it appears to interact with CTAS. We shouldn't get too excited about that precision. Maybe we can look at other models to see what they say. 
 
 Could look at doing a log transformation of mdex. This would be a log-linear model. 
+
+##Log-linear model
 ```{r}
 
 wb_data$log.mdex <- log(wb_data$mdex)

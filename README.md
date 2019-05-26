@@ -11,3 +11,5 @@ Re-did it with the short data
 create r markdown
 
 Imaging = 1 data analysis
+
+Mann-Whitney, KM, linear, loglinear, and a couple half baked ones at the end. Subgorup analysis included
