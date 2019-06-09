@@ -21,10 +21,14 @@ knitr::opts_chunk$set(
 ```
 
 # Summary
-I don't think there is evidence of confounding from the measured covariates. Overall, there is at most a small effect on MD time due to the intervention. Some of the analyses don't support that there is a difference between the MD time pre and post intervention. There might be a stronger effect of the intervention in some subgroups, but the subgroup analysis also shows the intervention increaseing MD time in some subgroups, which is odd. There may be unmeasured confounding that is distorting the relationships. Below there is a summary and then each chunk of code has a short explanation. 
+I don't think there is evidence of confounding from the measured covariates. 
+
+**Overall, there is at most a small effect on MD time due to the intervention. **
+
+Some of the analyses don't support that there is a difference between the MD time pre and post intervention. There might be a stronger effect of the intervention in some subgroups, but the subgroup analysis also shows the intervention increasing MD time in some subgroups, which is odd. There may be unmeasured confounding that is distorting the relationships. Below there is a summary and then each chunk of code has a short explanation. 
 
 ## Data
-group:	The intervention, Pre 24/7 support, Post 24/7 support;	0= pre, 1= post
+group:	The intervention, Pre 24/7 support, Post 24/7 support;	1 = pre, 0 = post
 mdex:	The outcome, Md time (min)	
 ctas:	Canadian triage and acuity score;	1= dead/ resuscitate, 5= almost normal
 Imaging:	Was imaging done;	0= no imaging, 1= imaging done
@@ -33,6 +37,7 @@ trauma:	Was it a trauma patient;	0= non trauma patient, 1= Trauma pt
 adm:	Patient admission to the hospital;	0 = not admitted, 1= admitted
 
 I filtered out the imaging = 0 data. I'm assuming that patients not requiring imaging could not be affected by the intervention (24/7 imaging support). 
+
 Missing data: Very little missing data so I'm assuming that it is MCAR. 
 
 Measurement error: Out of 81,099 observations, there were 15 instances where the outcome was recorded as "0" minutes. If there were a lot more "0" entries, I'd be more worried about those entries and measurement error in general. 
@@ -48,9 +53,9 @@ Possible unmeasured confounders:
 -change in operating procedure other than the intervention
 
 ##Statistical Test
-We can do a Mann-Whitney U test (we don't have censoring and this test does not assume a normal distribution). This test gives a p = 0.078. We don't have enough evidence to reject the null that data from the two groups come from different populations (ie: the intervention did not have an effect). This is probably the simplest, most straight forward and easily defendable analysis. "I saw one of the references that was sent to "Clinical impact of extending after-hours radiology coverage for emergency department computed tomography imaging" (Samer Dabbo, Catherine Varner, Robert Bleakney, and Howard Ovens; 2014) used a Mann-Whitney U test on what appears to be similar data. 
+We can do a Mann-Whitney U test (we don't have censoring and this test does not assume a normal distribution). This test gives a p = 0.078. We don't have enough evidence to reject the null that data from the two groups come from different populations (ie: the intervention did not have an effect). This is probably the simplest, most straight forward and easily defendable analysis. I saw one of the references that was sent to "Clinical impact of extending after-hours radiology coverage for emergency department computed tomography imaging" (Samer Dabbo, Catherine Varner, Robert Bleakney, and Howard Ovens; 2014) used a Mann-Whitney U test on what appears to be similar data. 
 
-Note: The post intervention median outcome (Md time, mdex) was *higher* than the pre intervention median. The post intervention mean outcome was lower than the pre intervention mean. 
+Note: The post intervention median outcome (Md time, mdex) was *lower* than the pre intervention median. The post intervention mean outcome was *higher* than the pre intervention mean. 
 
 
 ##Models
@@ -65,9 +70,9 @@ To address the residuals, I also did a log-linear regresion where I log-transfor
 I also did an ordinal logistic regression. 
 
 ##Effect of group: 
-The Mann-Whitney U test says that there is no effect due to group. Looking at the KM and other analyses, at most, the effect of group seems to be very small. It seem that the pre intervention group usually has a smaller median mdex, but that the post intervention gets "faster" after hitting the median (ie: it is quicker for "longer" cases). As an analogy, the pre intervention group is like a sprinter is quick and has the fastest 100 meter time and the post intervention group is slower out of the blocks, but wins the 400 meter race with a strong back half of the race. The intervention group is slower for mdex times under about ~400 minutes, and then it becomes faster.
+The Mann-Whitney U test says that there is no effect due to group. Looking at the KM and other analyses, at most, the effect of group seems to be very small. It seem that the post intervention group usually has a smaller median mdex, but that the pre intervention gets "faster" after hitting the median (ie: it is quicker for "longer" cases). As an analogy, the post intervention group is like a sprinter that is quick and has the fastest 100 meter time and the pre intervention group is slower out of the blocks, but wins the 400 meter race with a strong back half of the race. The post intervention group is faster for mdex times under about ~400 minutes, and then it becomes slower.
 
-Sub-group analysis: Intervention may increase the mdex (mean and median) time for trauma patients and patients that are not admitted. The intervention may decrease mdex time in admitted patients. There may be subgroup effects in CTAS and Todseen, but it's hard to say. These subgroup results are consistent across most methods. 
+Sub-group analysis: Intervention may decrease the mdex (mean and median) time for trauma patients and patients that are not admitted. The intervention may increase mdex time in admitted patients. There may be subgroup effects in CTAS and Todseen, but it's hard to say. These subgroup results are consistent across most methods. 
 
 
 ```{r}
@@ -131,19 +136,19 @@ The first plot is all the data and the following two plots are zoomed in on the 
 ggplot(data = wb_data_na, aes(x = mdex, color = group)) + 
   geom_histogram(binwidth = 200, alpha = 0.2, position = "identity", fill = "white") +
   labs(title = "Turn Around Time Distribution by Group", color = "Group", x = "Turn Around Time (minutes)", y = "Count") +
-  scale_color_discrete(name = "Group", labels = c("pre-24/7","post 24/7"))
+  scale_color_discrete(name = "Group", labels = c("post-24/7","pre-24/7"))
 #looks like poisson, looks like group 1 and 2 have extreme observations
 
 #look at the 0-1000 mdex range
 ggplot(data = wb_data_na, aes(x = mdex, color = group)) + 
   geom_histogram(binwidth = 50, alpha = 0.2, position = "identity", fill = "white") + xlim(0, 1000) +
   labs(title = "Turn Around Time Distribution by Group", subtitle = "TAT < 1000 mins", color = "Group", x = "Turn Around Time (minutes)", y = "Count") +
-  scale_color_discrete(name = "Group", labels = c("pre-24/7","post 24/7"))
+  scale_color_discrete(name = "Group", labels = c("post-24/7","pre-24/7"))
 
 ggplot(data = wb_data_na, aes(x = mdex, color = group)) + 
   geom_histogram(binwidth = 5, alpha = 0.2, position = "identity", fill = "white") + xlim(0, 100) +
   labs(title = "Turn Around Time Distribution by Group", subtitle = "TAT < 100 mins", color = "Group", x = "Turn Around Time (minutes)", y = "Count") +
-  scale_color_discrete(name = "Group", labels = c("pre-24/7","post 24/7"))
+  scale_color_discrete(name = "Group", labels = c("post-24/7","pre-24/7"))
 
 
 #the 95th quantil is this
@@ -155,7 +160,7 @@ ggplot(data = wb_data_na, aes(x = mdex, color = group)) +
 
 ```
 
-There are more very low values in the pre 24/7 group than in the post group. There are more moderately low values in the post group than in the pre group. If there is no confounding, then this suggests that the effect of the intervention switches (negative at very low mdex times and positive at moderately low mdex times). 
+There are more very low values in the post 24/7 group than in the pre group. There are more moderately low values in the pre group than in the post group. If there is no confounding, then this suggests that the effect of the intervention switches. 
 
 
 
@@ -164,15 +169,15 @@ Now let's take a look at the TAT (mdex) in each group. The first plot is with al
 
 ggplot(data = wb_data_na, aes(x = group, y = mdex)) + geom_boxplot() +
   labs(title = "Turn Around Time by Group", x = "Group", y = "Turn Around Time (minutes)") +
-  scale_x_discrete(labels = c("pre 24/7", "post 24/7"))
+  scale_x_discrete(labels = c("post 24/7", "pre 24/7"))
 
 ggplot(data = wb_data_na, aes(x = group, y = mdex)) + geom_boxplot(outlier.shape = NA) +
   scale_y_continuous(limits = c(0, 600)) +
   labs(title = "Turn Around Time by Group", subtitle = "Outliers Removed", x = "Group", y = "Turn Around Time (minutes)") +
-  scale_x_discrete(labels = c("pre 24/7", "post 24/7"))
+  scale_x_discrete(labels = c("post 24/7", "pre 24/7"))
 
 ```
-It doesn't look like a huge difference between the groups, but post looks a little higher.  
+It doesn't look like a huge difference between the groups, but pre looks a little higher.  
 
 
 ##Table 1 Descriptives and Potential Confounding
@@ -187,7 +192,7 @@ library(table1)
 
 #manipulate data set for Table 1, wont do it now, but if the table should be nicer, then we can label all the categories
 table1_data_na <- wb_data_na
-table1_data_na$group <- factor(table1_data_na$group, levels = c(0,1), labels = c("pre 24/7", "post 24/7"))
+table1_data_na$group <- factor(table1_data_na$group, levels = c(0,1), labels = c("post 24/7", "pre 24/7"))
 table1_data_na$trauma <- factor(table1_data_na$trauma, levels = c(0,1), labels = c("Non-Trauma Pt", "Trauma Pt"))
 table1_data_na$todseen <- factor(table1_data_na$todseen, levels = c(1,2,3), labels = c("Morning", "Evening", "Night"))
 table1_data_na$adm <- factor(table1_data_na$adm, levels = c(0,1), labels = c("Not Admitted", "Admitted"))
@@ -199,7 +204,7 @@ table1(~ ctas + adm + todseen + trauma + mdex | group, data = table1_data_na)
 ```
 Everything looks pretty balanced. A couple of spots that have a difference of 1.6% between the groups, but most are less than 1%. If someone told me this was an RCT and showed me this as a Table 1, I would believe that randomization worked. This is not an RCT, but it does not look like there is a relationship between group and any of the measured potential confounding variables. Also note that there is very little missing data. 
 
-Side note: we can see the median and mean for each group. The post group has a lower mean but a higher median. 
+Side note: we can see the median and mean for each group. The post group has a higher mean but a lower median. 
 
 
 Can sub-stratify by trauma and ctas if we want. I do that because those might be the least balanced of all the variables (I do proportion tests further down).
@@ -245,7 +250,7 @@ pt.tr1 <- prop.test(tr.table[2,2], sum(tr.table[1:2,2]), p = 0.5)
 ```
 
 
-Now look at the CIs of the prop tests. These are the proportion of a certain level of a variable that is in group 1 (ie: the post 24/7 group). This is showing the min and max values of the proportion in group 1 (for each level of variable) that are compatible with our data. 
+Now look at the CIs of the prop tests. These are the proportion of a certain level of a variable that is in group 1 (ie: the pre 24/7 group). This is showing the min and max values of the proportion in group 1 (for each level of variable) that are compatible with our data. 
 
 ```{r}
 ctas.pt.cis <- data.frame(row.names = colnames(wb_data[c(9:13)]), round(matrix(data = c(pt.ctas1$conf.int, pt.ctas2$conf.int, pt.ctas3$conf.int, pt.ctas4$conf.int, pt.ctas5$conf.int), nrow = 5, ncol = 2, byrow = TRUE), 3))
@@ -342,7 +347,7 @@ So-so.
 
 ##Mann-Whitney U test
 
-There is no censoring and I don't think that there is confounding, so would could simply do a Mann-Witney U test between group = 0 and group = 1.
+There is no censoring and I don't think that there is confounding, so would could simply do a Mann-Witney U test between group = 0 (post) and group = 1 (pre).
 
 Two data samples are independent if they come from distinct populations and the samples do not affect each other. Using the Mann-Whitney U test (aka Mann-Whitney-Wilcoxon Test), we can decide whether the population distributions are identical without assuming them to follow the normal distribution.
 
@@ -351,7 +356,7 @@ The null hypothesis is that they are identical and the alternative is that they 
 wilcox.test(wb_data$mdex~ wb_data$group)
 
 ```
-This gives a p value of 0.078, so we don't have enough evidence to reject the null that the populations are identical. We have a huge sample size, so it is not for lack of observations. If there is a difference between the populations, it's small. Recall the median mdex for the post 24/7 intervention (group = 1) is *higher* than the median for the pre 24/7 intervention group. The mean of the post 24/7 group is lower. This is a right skewed data set so the median is probably a better measure of center. I still need to do a subgroup analysis of this. 
+This gives a p value of 0.078, so we don't have enough evidence to reject the null that the populations are identical. We have a huge sample size, so it is not for lack of observations. If there is a difference between the populations, it's small. Recall the median mdex for the post 24/7 intervention (group = 0) is *lower* than the median for the pre 24/7 intervention group. The mean of the post 24/7 group is *higher*. This is a right skewed data set so the median is probably a better measure of center. I still need to do a subgroup analysis of this. 
 
 Adm subgroup:
 ```{r}
@@ -359,7 +364,7 @@ wilcox.test(subset(wb_data, adm == 1)$mdex ~subset(wb_data, adm == 1)$group)
 wilcox.test(subset(wb_data, adm == 0)$mdex ~subset(wb_data, adm == 0)$group)
 
 ```
-When stratified by adm, the subgroups come from different populations (ie: there is an effect due to the intervetion). Recall the descriptive stats, median and mean mdex is *longer* in the post 24/7 group for patients that are not admitted. Median and mean mdex is shorter in the post 24/7 group for patients that are not admitted. 
+When stratified by adm, the subgroups come from different populations (ie: there is an effect due to the intervetion). Recall the descriptive stats, median and mean mdex is shorter in the post 24/7 group for patients that are not admitted. Median and mean mdex is *longer* in the post 24/7 group for patients that are not admitted. 
 
 
 ```{r}
@@ -367,7 +372,7 @@ wilcox.test(subset(wb_data, trauma == 1)$mdex ~subset(wb_data, trauma == 1)$grou
 wilcox.test(subset(wb_data, trauma == 0)$mdex ~subset(wb_data, trauma == 0)$group)
 
 ```
-When stratified by trauma, only trauma patients come from different populations (ie: there is an effect due to the intervention in the trauma subgroup). Non-trauma patients in both pre and post groups come from the same population. Median and mean mdex is *longer* in the post 24/7 group for trauma patients.
+When stratified by trauma, only trauma patients come from different populations (ie: there is an effect due to the intervention in the trauma subgroup). Non-trauma patients in both pre and post groups come from the same population. Median and mean mdex is *shorter* in the post 24/7 group for trauma patients.
 
 ```{r}
 wilcox.test(subset(wb_data, ctas == 1)$mdex ~subset(wb_data, ctas == 1)$group)
@@ -378,7 +383,7 @@ wilcox.test(subset(wb_data, ctas == 5)$mdex ~subset(wb_data, ctas == 5)$group)
 
 ```
 
-When stratified by ctas, only ctas4 patients come from different populations (ie: there is an effect due to the intervention in the trauma subgroup). CTAS1, CTAS2, CTAS3, and CTAS5 patients in both pre and post groups come from the same population. Median mdex is shorter but mean mdex is longer in the post 24/7 group of CTAS4 patients. 
+When stratified by ctas, only ctas4 patients come from different populations (ie: there is an effect due to the intervention in the trauma subgroup). CTAS1, CTAS2, CTAS3, and CTAS5 patients in both pre and post groups come from the same population. Median mdex is longer but mean mdex is shorter in the post 24/7 group of CTAS4 patients. 
 
 ```{r}
 wilcox.test(subset(wb_data, todseen == 1)$mdex ~subset(wb_data, todseen == 1)$group)
@@ -389,13 +394,14 @@ wilcox.test(subset(wb_data, todseen == 3)$mdex ~subset(wb_data, todseen == 3)$gr
 When stratified by todseen, only todseen2 and todseen3 (evening and night) patients come from different populations (ie: there is an effect due to the intervention in the trauma subgroup). Todseen 1 patients (morning) in both pre and post groups come from the same population. The median mdex times are shorter but mean mdex times are longer in the post 24/7 group of both todseen2 and todeen3 patients.  
 
 
+
 Table to summarize the Mannn-Whitney U subgroup tests:
 ```{r}
 
 adm.ctr <- rbind(c(mean(subset(wb_data, adm == 0 & group == 0)$mdex), mean(subset(wb_data, adm == 0 & group == 1)$mdex)), 
-               c(median(subset(wb_data, adm == 0 & group == 0)$mdex), median(subset(wb_data, adm == 0 & group == 1)$mdex)), 
+               c(median(subset(wb_data, adm == 0 & group == 0)$mdex), median(subset(wb_data, adm == 0 & group ==1)$mdex)), 
                c(mean(subset(wb_data, adm == 1 & group == 0)$mdex), mean(subset(wb_data, adm == 1 & group == 1)$mdex)), 
-               c(median(subset(wb_data, adm == 1 & group == 0)$mdex), median(subset(wb_data, adm == 1 & group == 1)$mdex)))
+               c(median(subset(wb_data, adm == 1 & group == 0)$mdex), median(subset(wb_data, adm == 1 & group ==1)$mdex)))
 
 trauma.ctr <- rbind(c(mean(subset(wb_data, trauma == 0 & group == 0)$mdex), mean(subset(wb_data, trauma == 0 & group == 1)$mdex)), 
                   c(median(subset(wb_data, trauma == 0 & group == 0)$mdex), median(subset(wb_data, trauma == 0 & group == 1)$mdex)), 
@@ -425,9 +431,9 @@ all.w.df <- as.data.frame(cbind(c("adm0", "", "adm1", "", "trauma0", "", "trauma
 all.w.df$V5 <- round(as.numeric(as.character(all.w.df$V5)), 1)
 all.w.df$V4 <- round(as.numeric(as.character(all.w.df$V4)), 1)
 all.w.df$p.value <- round(as.numeric(as.character(all.w.df$p.value)), 5)
-all.w.df$improvement <- ifelse(all.w.df[ , 4] - all.w.df[ , 5] > 0, "Yes", "No")
+all.w.df$improvement <- ifelse(all.w.df[ , 4] - all.w.df[ , 5] < 0, "Yes", "No")
 
-colnames(all.w.df) <- c("Subgroup", "M-W p value", "Measure of Center", "Pre 24/7", "Post 24/7", "Improvement?")
+colnames(all.w.df) <- c("Subgroup", "M-W p value", "Measure of Center", "Post 24/7", "Pre 24/7", "Improvement?")
 
 
 library(formattable)
@@ -437,7 +443,7 @@ formattable(all.w.df)
 ```
 ###Overall Mann-Whitney U Test results
 
-No effect on mdex due to intervention, though the means and medians suggest that the intervention may even increase mdex time. The clearest subgroup effects (p value < 0.05 and a change in mean and median in the same direction) are in Adm0, Adm1, and Trauma1. In Adm0 and Trauma1, the mean and median mdex time increased. In Adm1, the mdex time decreased. 
+No effect on mdex due to intervention, though the means and medians suggest that the intervention may decrease mdex time. The clearest subgroup effects (p value < 0.05 and a change in mean and median in the same direction) are in Adm0, Adm1, and Trauma1. In Adm0 and Trauma1, the mean and median mdex time decreased. In Adm1, the mdex time increased. 
 
 A simple p value doesn't tell us much apart from the probability of getting out data given the null is true. Maybe try to fit some models and see if we can get more information out of it. 
 
@@ -470,7 +476,7 @@ summary(g.c.int.multi.cox)
 all.int.multi.cox <- coxph(data = wb_data, formula = Surv(mdex) ~ group + group*trauma + group*adm)
 summary(all.int.multi.cox)
 ```
-That was fun! The univariate model suggests that mdex is 2.7% to 5.5% faster in the intervention group. But before I get too excited, I should probably check the proportional hazards assumption **ominous music plays in the background**
+That was fun! The univariate model suggests that mdex is 2.7% to 5.5% slower in the intervention group. But before I get too excited, I should probably check the proportional hazards assumption **ominous music plays in the background**
 
 
 ```{r}
@@ -501,7 +507,7 @@ logtime.g1 <- log(time.g1)
 
 plot(cloglog.g0 ~ logtime.g0, type="s", col="blue", lwd=2)
 lines(cloglog.g1 ~ logtime.g1, col="red", lwd=2, type="s")
-legend("bottomright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red"), lwd=2)
+legend("bottomright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red"), lwd=2)
 #they cross a lot. Would need to allow it to vary with time.
 
 #looking for time variable, just following the textbook
@@ -587,7 +593,7 @@ library(ggfortify)
 #km
 g.km <- survfit(surv.mdex ~ wb_data$group)
 plot(g.km, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex")
 
 survdiff(Surv(wb_data$mdex) ~ wb_data$group, rho = 1)
@@ -596,15 +602,15 @@ survdiff(Surv(wb_data$mdex) ~ wb_data$group, rho = 1)
 
 #Can also zoom into certain sections of the graph
 plot(g.km, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 500), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title(main = "K-M for mdex", sub = "zoomed in on mdex < 500 minutes")
 
 ```
-You can see in the full KM graph that the red line dips below the blue line between roughly 500 and 1500 minutes. That means that in that region, the post 24/7 is faster. However when we zoom in to under 500 minutes, the blue line is below the red line, which means that the pre 24/7 is faster. This is compatible with the first couple of histograms at the start of this document where we saw that the pre 24/7 group has more observations with very small mdex. The mean for the post group is lower, but the median is higher. So from the graph, we can see that the first 50% of processes occur faster in the pre group, but then the post group gets faster. 
+You can see in the full KM graph that the red line dips below the blue line between roughly 500 and 1500 minutes. That means that in that region, the pre 24/7 is faster. However when we zoom in to under 500 minutes, the blue line is below the red line, which means that the post 24/7 is faster. This is compatible with the first couple of histograms at the start of this document where we saw that the post 24/7 group has more observations with very small mdex. The mean for the post group is lower, but the median is higher. So from the graph, we can see that the first 50% of processes occur faster in the post group, but then the pre group gets faster. 
 
 It may not be appropriate to do a log ranked test because the curves cross. "Statistical Inference Methods for Two Crossing Survival Curves: A Comparison of Methods (Huimin Li, 1 Dong Han, 1 Yawen Hou, 2 Huilin Chen, 1 and Zheng Chen 1; 2015)" suggests using Nyeman's smooth tests or a two stage procedure would be appropriate. I don't know how to do those and I couldn't find an up to date R package for them. 
 
-I use the Peto & Peto modification of the Gehan-Wilcoxon logranked test because it gives more weight to earlier time points. It is also better for when the proportional hazards assumption does not hold. It's probably not appropriate for crossing lines, but I ran it for exploratory reasons. On the entire dataset, it gives a p = 0.08, there isn't enough evidence to say they are not the same curves. Recall that the mean for the post group is lower, but the median is higher. Also, when there is not loss to follow up, I think the logranked test simplifies to the Mann-Whitney U. 
+I use the Peto & Peto modification of the Gehan-Wilcoxon logranked test because it gives more weight to earlier time points. It is also better for when the proportional hazards assumption does not hold. It's probably not appropriate for crossing lines, but I ran it for exploratory reasons. On the entire dataset, it gives a p = 0.08, there isn't enough evidence to say they are not the same curves. Recall that the mean for the post group is higher, but the median is lower. Also, when there is no loss to follow up, I think the logranked test simplifies to the Mann-Whitney U. 
 
 We can look as K-M curves for each level of CTAS:
 ```{r}
@@ -619,11 +625,11 @@ survdiff(Surv(wb_data$mdex) ~ wb_data$group + strata(wb_data$ctas), rho = 1)
 
 g.km.ctas1 <- survfit(Surv(data_ctas1$mdex) ~ data_ctas1$group)
 plot(g.km.ctas1, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS1")
 
 plot(g.km.ctas1, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 1000), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS1", sub = "zoomed in on mdex < 1000 minutes")
 
 survdiff(Surv(data_ctas1$mdex) ~ data_ctas1$group, rho= 1)
@@ -631,11 +637,11 @@ survdiff(Surv(data_ctas1$mdex) ~ data_ctas1$group, rho= 1)
 
 g.km.ctas2 <- survfit(Surv(data_ctas2$mdex) ~ data_ctas2$group)
 plot(g.km.ctas2, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS2")
 
 plot(g.km.ctas2, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 500), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS2", sub= "zoomed in on mdex < 500 minutes")
 
 survdiff(Surv(data_ctas2$mdex) ~ data_ctas2$group, rho= 1)
@@ -643,33 +649,33 @@ survdiff(Surv(data_ctas2$mdex) ~ data_ctas2$group, rho= 1)
 
 g.km.ctas3 <- survfit(Surv(data_ctas3$mdex) ~ data_ctas3$group)
 plot(g.km.ctas3, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS3")
 
 plot(g.km.ctas3, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 300), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS3", sub = "zoomed in on mdex < 300 minutes")
 
 survdiff(Surv(data_ctas3$mdex) ~ data_ctas3$group, rho= 1)
 
 g.km.ctas4 <- survfit(Surv(data_ctas4$mdex) ~ data_ctas4$group)
 plot(g.km.ctas4, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS4")
 
 plot(g.km.ctas4, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 300), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS4", sub = "zoomed in on mdex < 300 minutes")
 
 survdiff(Surv(data_ctas4$mdex) ~ data_ctas4$group, rho= 1)
 
 g.km.ctas5 <- survfit(Surv(data_ctas5$mdex) ~ data_ctas5$group)
 plot(g.km.ctas5, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS5")
 
 plot(g.km.ctas5, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0,500), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of CTAS5", sub = "zoomed in on mdex < 500")
 
 survdiff(Surv(data_ctas5$mdex) ~ data_ctas5$group, rho= 1)
@@ -677,19 +683,19 @@ survdiff(Surv(data_ctas5$mdex) ~ data_ctas5$group, rho= 1)
 table1(~ trauma  + adm + todseen + mdex | ctas*group, data = table1_data_na)
 
 ```
-A quick visual inspection shows CTAS2 and CTAS3 have the clearest benefits of 24/7. CTAS1 has the switching of effect and CTAS4 and 5 are less clear. When you zoom in, you can see that most of them cross, with the pre group being lower under about 400 minutes and then the post group being lower after that. 
+A quick visual inspection shows CTAS2 and CTAS3 have the clearest benefits of 24/7. CTAS1 has the switching of effect and CTAS4 and 5 are less clear. When you zoom in, you can see that most of them cross, with the post group being lower under about 400 minutes and then the pre group being lower after that. 
 
-CTAS1: The survival curves cross. Pre is below for the most part for mdex < 1000 and then post is below for the most part after that. Post median and mean are lower. Lines cross and a p = 0.5
+CTAS1: The survival curves cross. Post is below for the most part for mdex < 1000 and then pre is below for the most part after that. Post median and mean are higher. Lines cross and a p = 0.5
 
-CTAS2: We can see post is below for probably the entire curve. Post median and mean are lower. p = 0.3
+CTAS2: We can see pre is below for probably the entire curve. Post median and mean are higher p = 0.3
 
-CTAS3: Between 100 and 250, pre is slightly below and then after 250, post is below. Post mean is lower, but post median is higher. p = 0.6 
+CTAS3: Between 100 and 250, post is slightly below and then after 250, pre is below. Post mean is higher, but post median is lower. p = 0.6 
 
-CTAS4: Pre is slightly below until 250 and then post is slighty below after that. Post mean is lower, but post median is higher. p = 2e-05
+CTAS4: Post is slightly below until 250 and then pre is slighty below after that. Post mean is higher, but post median is lower. p = 2e-05
 
-CTAS5: Pre is slightly below from 50 until about 250, and then post is below after that. Post mean is lower, but post median is higher. p = 0.6
+CTAS5: Post is slightly below from 50 until about 250, and then pre is below after that. Post mean is higher, but post median is lower. p = 0.6
 
-KM CTAS sub group analysis conclusion: The intervention may increase median mdex in CTAS3, CTAS4 and CTAS5 (may be conclusive for CTAS3). The intervention may reduce mdex time in CTAS1 and CTAS2. 
+KM CTAS sub group analysis conclusion: The intervention may decrease median mdex in CTAS3, CTAS4 and CTAS5 (may be conclusive for CTAS3). The intervention may increase mdex time in CTAS1 and CTAS2. 
 
 
 Subgroup of Adm:
@@ -702,22 +708,22 @@ survdiff(Surv(wb_data$mdex) ~ wb_data$group + strata(wb_data$adm), rho = 1)
 
 g.km.adm0 <- survfit(Surv(data_adm0$mdex) ~ data_adm0$group)
 plot(g.km.adm0, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Adm = 0")
 
 plot(g.km.adm0, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 900), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Adm = 0", sub = "zoomed in on mdex < 800")
 
 survdiff(Surv(data_adm0$mdex) ~ data_adm0$group, rho = 1)
 
 g.km.adm1 <- survfit(Surv(data_adm1$mdex) ~ data_adm1$group)
 plot(g.km.adm1, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
 title("K-M for mdex of Adm = 1 all data")
 
 plot(g.km.adm1, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 500), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
 title("K-M for mdex of Adm = 1 all data")
 
 survdiff(Surv(data_adm1$mdex) ~ data_adm1$group, rho = 1)
@@ -726,11 +732,11 @@ survdiff(Surv(data_adm1$mdex) ~ data_adm1$group, rho = 1)
 table1(~ trauma + ctas + todseen + mdex | adm*group, data = table1_data_na)
 
 ```
-Not admitted (Adm = 0): Looks like pre is below for the entire curve. The post median and mean are both higher. p = <2e-16 
+Not admitted (Adm = 0): Looks like post is below for the entire curve. The post median and mean are both lower. p = <2e-16 
 
-Admitted (Adm = 1): Looks like post is below for the entire curve. The post median and mean are both lower. p = <2e-16 
+Admitted (Adm = 1): Looks like pre is below for the entire curve. The post median and mean are both higher. p = <2e-16 
 
-KM Adm sub group analysis conclusion: The intervention reduces median mdex in those who are admitted to the hospital (adm = 1). Otherwise, the intervention increases median mdex for those not admittd (adm = 0). 
+KM Adm sub group analysis conclusion: The intervention increases median mdex in those who are admitted to the hospital (adm = 1). Otherwise, the intervention decreases median mdex for those not admittd (adm = 0). 
 
 Subgroup of Trauma:
 ```{r}
@@ -741,34 +747,34 @@ survdiff(Surv(wb_data$mdex) ~ wb_data$group + strata(wb_data$trauma), rho = 1)
 
 g.km.tr0 <- survfit(Surv(data_tr0$mdex) ~ data_tr0$group)
 plot(g.km.tr0, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Trauma = 0")
 
 plot(g.km.tr0, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 500), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Trauma = 0", sub = "zoomed in on mdex < 500 minutes")
 
 survdiff(Surv(data_tr0$mdex) ~ data_tr0$group, rho = 1)
 
 g.km.tr1 <- survfit(Surv(data_tr1$mdex) ~ data_tr1$group)
 plot(g.km.tr1, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
 title("K-M for mdex of Trauma = 1")
 
 plot(g.km.tr1, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 500), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2, box.lty=0)
 title("K-M for mdex of Trauma = 1", sub = "zoomed in on mdex < 500 minutes")
 
 survdiff(Surv(data_tr1$mdex) ~ data_tr1$group, rho = 1)
 
-table1(~ adm + todseen + mdex + ctas | trauma*group, data = table1_data_na)
+table1(~ adm + todseen + ctas + mdex | trauma*group, data = table1_data_na)
 
 ```
-Trauma = 0: Pre is below post until about 250 after which post is below. Post mean is lower and post median is higher. p = 0.8
+Trauma = 0: Post is below pre until about 250 after which pre is below. Post mean is higher and post median is lower. p = 0.8
 
-Trauma = 1: Pre is below until about 500. It looks like post might get below after that, but not by much. Post mean and median are higher. p = 1e-07  
+Trauma = 1: Post is below until about 500. It looks like pre might get below after that, but not by much. Post mean and median are lower. p = 1e-07  
 
-KM Trauma subgroup conclusion: It looks like the intervention increases the mdex time in trauma patients. Note: there is a much larger sample size for Trauma = 0. 
+KM Trauma subgroup conclusion: It looks like the intervention decreases the mdex time in trauma patients. Note: there is a much larger sample size for Trauma = 0. 
 
 ```{r}
 data_to1 <- subset(wb_data, todseen ==1)
@@ -779,11 +785,11 @@ survdiff(Surv(wb_data$mdex) ~ wb_data$group + strata(wb_data$todseen), rho = 1)
 
 g.km.to1 <- survfit(Surv(data_to1$mdex) ~ data_to1$group)
 plot(g.km.to1, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Todseen = 1")
 
 plot(g.km.to1, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 300), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Todseen = 1", sub = "zoomed in on mdex < 300 minutes")
 
 survdiff(Surv(data_to1$mdex) ~ data_to1$group, rho = 1)
@@ -791,22 +797,22 @@ survdiff(Surv(data_to1$mdex) ~ data_to1$group, rho = 1)
 
 g.km.to2 <- survfit(Surv(data_to2$mdex) ~ data_to2$group)
 plot(g.km.to2, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Todseen = 2")
 
 plot(g.km.to2, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 400), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Todseen = 2", sub = "zoomed in on mdex < 400 minutes")
 
 survdiff(Surv(data_to2$mdex) ~ data_to2$group, rho = 1)
 
 g.km.to3 <- survfit(Surv(data_to3$mdex) ~ data_to3$group)
 plot(g.km.to3, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Todseen = 3")
 
 plot(g.km.to3, xlab="Time in Minutes", ylab="Probability of Still Being with Md", col=c("blue", "red"), lwd=2, xlim = c(0, 400), conf.int = TRUE)
-legend("topright", legend=c("Pre 24/7", "Post 24/7"), col=c("blue","red") , lwd=2)
+legend("topright", legend=c("Post 24/7", "Pre 24/7"), col=c("blue","red") , lwd=2)
 title("K-M for mdex of Todseen = 3", sub = "zoomed in on mdex < 400 minutes")
 
 survdiff(Surv(data_to3$mdex) ~ data_to3$group, rho = 1)
@@ -816,19 +822,19 @@ table1(~ adm + trauma + ctas + mdex | todseen*group, data = table1_data_na)
 
 
 ```
-Todseen = 1: Pre is barely below between 50 and 250. Post is below around 300 to 2000. Post mean and median are lower. p = 0.1
+Todseen = 1: Post is barely below between 50 and 250. Pre is below around 300 to 2000. Post mean and median are higher. p = 0.1
 
-Todseen = 2: Pre is below up to about 350 and post is below after that until about 2000. There's a weird hump in pre around 1000. Post mean is lower, but the post median is higher. p = 0.01
+Todseen = 2: Post is below up to about 350 and pre is below after that until about 2000. There's a weird hump in post around 1000. Post mean is higher, but the post median is lower. p = 0.01
 
-Todseen = 3: Post is below until about 350, after which pre is slightly below until a little past 200. Post mean is lower, but the post median is higher. p = 0.02
+Todseen = 3: Post is below until about 350, after which pre is slightly below until a little past 200. Post mean is higher, but the post median is lower. p = 0.02
 
-KM Todseen subgroup conclusions: The intervention may reduce median mdex in Todseen = 1, but is inconclusive. The intervention increases median mdex in Todseen = 2 and 3.
+KM Todseen subgroup conclusions: The intervention may increase median mdex in Todseen = 1, but is inconclusive. The intervention decreases median mdex in Todseen = 2 and 3.
 
 ###Overall KM results
 
-Very small differences in mdex between the groups. It seem that the pre intervention group usually has a smaller median mdex, but that the post intervention gets "faster" after hitting the median (ie: it is quicker for "longer" cases). The pre intervention group is the sprinter that has the fastest 100m and the post intervention group is slower out of the blocks, but wins the 400m with a strong back half of the race. The intervention is slower up until about ~400 minutes, and then it becomes faster.
+Very small differences in mdex between the groups. It seem that the post intervention group usually has a smaller median mdex, but that the pre intervention gets "faster" after hitting the median (ie: it is quicker for "longer" cases). The post intervention group is the sprinter that has the fastest 100m and the pre intervention group is slower out of the blocks, but wins the 400m with a strong back half of the race. The intervention is faster up until about ~400 minutes, and then it becomes slower
 
-Intervention may increase the mdex (mean and median) time for trauma patients and patients that are not admitted. The intervention may decrease mdex time in admitted patients. There may be subgroup effects in CTAS and Todseen, but it's hard to say.
+Intervention may decrease the mdex (mean and median) time for trauma patients and patients that are not admitted. The intervention may increase mdex time in admitted patients. There may be subgroup effects in CTAS and Todseen, but it's hard to say (the evidence isn't as strong and there is the mean and median going in opposite directions post intervention compared to pre intervention).
 
 ##Linear Regression
 
@@ -842,14 +848,14 @@ c(22, 17, 12)/374
 
 
 ```
-With only group, the model describes the effect of group at -17 minutes (ie: 17 minutes faster in post 24/7). That's 3.2% to 5.9% shorter mdex after the intervention. This is basically a t-test comparing means. 
+Recall that the intervention is coded as pre 24/7 interventon being group = 1 and post intervention being group = 0. With only group, the model describes the effect of group at -17 minutes (ie: 17 minutes faster in pre 24/7). That's 3.2% to 5.9% longer mdex after the intervention. This is basically a t-test comparing *means*. 
 
 CTAS subgroup effects:
 ```{r}
 g.c.int.multi <- lm(data = wb_data, mdex ~ group + group*ctas)
 confint(g.c.int.multi)
 ```
-Explore subgroup effects with group and a ctas interaction term, it shows that group has the greatest absolute effect on the ctas1 level (-34 mins). It shows that group has an absolute effect of -28 mins in ctas2 and -22 minutes in ctas3. Not much of an effect in ctas4 or ctas5. The CIs are very wide and all of them cross the null. 
+Explore subgroup effects with group and a ctas interaction term, it shows that group has the greatest absolute effect on the ctas1 level (-34 mins for pre intervention group). It shows that group has an absolute effect of -28 mins in ctas2 and -22 minutes in ctas3. Not much of an effect in ctas4 or ctas5. The CIs are very wide and all of them cross the null. 
 
 Another way to do subgroup analysis is to do linear regressions on each subset of the data.
 ```{r}
@@ -879,7 +885,7 @@ summary(lm(data = wb_data, mdex ~ group + trauma*group))
 confint(lm(data = wb_data, mdex ~ group + trauma*group))
 
 ```
-Shorter mdex times in post 24/7 group for non-trauma patient. Longer mdex times in post 24/7 group for trauma patients. This is compatible with what we saw in the KM subgroup analysis.
+Longer mdex times in post 24/7 group for non-trauma patient. Shorter mdex times in post 24/7 group for trauma patients. This is compatible with what we saw in the KM subgroup analysis.
 
 Todseen subgroup:
 ```{r}
@@ -887,7 +893,7 @@ lm(data = wb_data, mdex ~ group + todseen*group)
 summary(lm(data = wb_data, mdex ~ group + todseen*group))
 confint(lm(data = wb_data, mdex ~ group + todseen*group))
 ```
-Shorter mdex times in post 24/7 group for todseen = 1.
+Longer mdex times in post 24/7 group for todseen = 1.
 
 Can check some other multi regressions and the bic.glm for fun. Further below I check the assumptions 
 ```{r}
@@ -901,7 +907,7 @@ confint(lm(data = wb_data, mdex ~ group + ctas + trauma + adm))
 bic.linear <- bic.glm.formula(data = wb_data, f = mdex ~ group + ctas + trauma + adm + todseen, glm.family = gaussian())
 summary(bic.linear)
 ```
-"Full up" model has group effect at -11 minutes. The full model has a higher R (obvously), but recall prediction is not the aim. 
+"Full up" model has group effect at -11 minutes (ie: 11 minutes longer in the post intervention group). The full model has a higher R (obvously), but recall prediction is not the aim. 
 
 Checking assumptions of linear regressions
 ```{r}
@@ -965,7 +971,7 @@ plot(wb_data$group, g.log.uni$residuals)
 #this looks good as well. The determinant is categorical, so we are just for the spread to be similar for each level. This looks to be satisfied. The variance appears to be constant accross the range. 
 
 ```
-Now the 3 assumptions are much more respected (see the graphs), but the R2 has gone down. In this case, group doesn't seem to have an effect (the CI is 0.99, 1.02). 
+Now the 3 assumptions are much more respected (see the graphs), but the R2 has gone down. In this case, group doesn't seem to have an effect (the CI is 0.99, 1.02). Recall group = 0 is the post 24/7 intervention group. 
 
 
 Now look at log-linear with a ctas interaction term:
@@ -997,7 +1003,7 @@ summary(g.log.adm.int)
 exp(g.log.adm.int$coefficients)
 exp(confint(g.log.adm.int))
 ```
-Longer mdex times in post 24/7 group when patient not admitted. Shorter mdex times in post 24/7 group when patient admitted. This is compatible with what we saw in the KM  and linear regression subgroup analysis.
+Shorter mdex times in post 24/7 group when patient not admitted. Longer mdex times in post 24/7 group when patient admitted. This is compatible with what we saw in the KM and linear regression subgroup analysis.
 
 Trauma subgroup:
 ```{r}
@@ -1007,7 +1013,7 @@ summary(g.log.tr.int)
 exp(g.log.tr.int$coefficients)
 exp(confint(g.log.tr.int))
 ```
-Maybe shorter mdex times in post 24/7 group for non-trauma patient, but inconclusive. Longer mdex times in post 24/7 group for trauma patients. This is compatible with what we saw in the KM  and linear regression subgroup analysis.
+Maybe longer mdex times in post 24/7 group for non-trauma patient, but inconclusive. Shorter mdex times in post 24/7 group for trauma patients. This is compatible with what we saw in the KM and linear regression subgroup analysis.
 
 Todseen subgroup:
 ```{r}
@@ -1017,7 +1023,7 @@ summary(g.log.to.int)
 exp(g.log.to.int$coefficients)
 exp(confint(g.log.to.int))
 ```
-Shorter mdex times in post 24/7 group for todseend = 1 (morning). Longer for todseen = 2 and 3. 
+Longer mdex times in post 24/7 group for todseend = 1 (morning). Shorter for todseen = 2 and 3. 
 
 Do an everything in and bic:
 ```{r}
@@ -1032,7 +1038,7 @@ exp(g.log.all.multi$coefficients)
 exp(confint(g.log.all.multi))
 
 ```
-The bic keeps group in and says it actaully makes the time slower. The "everything in" also says that group makes it slower. I don't really think these are good models for describing the effect of group, but there they are. 
+The bic keeps group in and says it makes the time slower (i.e.: longer mdex times for group = 1, the pre intervention group). The "everything in" also says that group = 1 makes it slower. I don't really think these are good models for describing the effect of group, but there they are. 
 
 Overall log linear: Most of the subgroup analyses agree with the KM subgroup analyses. The univariable regression also shows a small effect on mdex due to group. 
 
@@ -1066,13 +1072,13 @@ Here is a univariate ordinal with just group:
 ```{r}
 g.uni.ord.cis
 ```
-I think this is saying that the intervention makes it more likely to take longer (ie: be in a higher mdex tertile). This fits with what we've seen where the median is smaller for the pre 24/7 group. 
+I think this is saying that the intervention makes it more likely to take less time (ie: be in a lower mdex tertile). This fits with what we've seen where the median is smaller for the post 24/7 group. 
 
 With all the measured variables:
 ```{r}
 multi.ord.cis
 ```
-Here again has the intervention making it more likely to take longer (ie: be in a higher tertile)
+Here again has the intervention making it more likely to take less time (ie: be in a lower tertile)
 
 I don't think it's worth looking into the subgroups here, but we could. 
 

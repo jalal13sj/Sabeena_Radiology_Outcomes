@@ -72,6 +72,11 @@ wb_data_na$imaging <- as.factor(wb_data_na$imaging)
 wb_data_na$trauma <- as.factor(wb_data_na$trauma)
 wb_data_na$adm <- as.factor(wb_data_na$adm)
 
+#this is where I can set the whole dang thing to with or without imaging
+wb_data_i1 <- subset(wb_data, imaging == 1)
+wb_data_na_i1 <- subset(wb_data_na, imaging == 1)
+nrow(wb_data_i1)
+nrow(wb_data)
 library(ggplot2)
 
 ```
@@ -702,6 +707,68 @@ all.vars.bic <- bic.glm.formula(data = wb_data, f = mdex ~ group + trauma + ctas
 summary(all.vars.bic)
 
 ```
+
+
+**Cox Semi-Parametric Regression**
+```{r}
+
+library(survival)
+head(wb_data)
+surv.mdex <- Surv(wb_data$mdex)
+
+g.uni.cox <- coxph(data = wb_data, formula = Surv(mdex) ~ group)
+summary(g.uni.cox)
+
+all.multi.cox <- coxph(surv.mdex ~ wb_data$group + wb_data$ctas + wb_data$imaging + wb_data$trauma + wb_data$todseen + wb_data$adm)
+summary(all.multi.cox)
+
+g.c.multi.cox <- coxph(surv.mdex ~ wb_data$group + wb_data$ctas)
+summary(g.c.multi.cox)
+
+cox.zph(g.uni.cox)
+cox.zph(g.c.multi.cox)
+cox.zph(all.multi.cox)
+
+lm(data = wb_data, mdex ~ group)
+
+
+#km
+g.km <- survfit(surv.mdex ~ wb_data$group)
+plot(g.km)
+
+data_under_1000 <- subset(wb_data, mdex < 1000)
+
+g.km.1000 <- survfit(Surv(data_under_1000$mdex) ~ data_under_1000$group)
+plot(g.km.1000, lty = c(1,2))
+
+g.uni.cox.1000 <- coxph(data = data_under_1000, formula = Surv(mdex) ~ group)
+summary(g.uni.cox.1000)
+
+g.c.multi.cox.1000 <- coxph(data = data_under_1000, formula = Surv(mdex) ~ group + ctas)
+summary(g.c.multi.cox.1000)
+
+data_ctas1 <- subset(wb_data, ctas ==1)
+data_ctas2 <- subset(wb_data, ctas ==2)
+data_ctas3 <- subset(wb_data, ctas ==3)
+data_ctas4 <- subset(wb_data, ctas ==4)
+data_ctas5 <- subset(wb_data, ctas ==5)
+
+g.km.ctas1 <- survfit(Surv(data_ctas1$mdex) ~ data_ctas1$group)
+plot(g.km.ctas1, lty = c(1,2))
+
+g.uni.cox.ctas1 <- coxph(data = data_ctas1, formula = Surv(mdex) ~ group)
+summary(g.uni.cox.ctas1)
+
+g.km.ctas2 <- survfit(Surv(data_ctas2$mdex) ~ data_ctas2$group)
+plot(g.km.ctas2, lty = c(1,2))
+
+g.uni.cox.ctas2 <- coxph(data = data_ctas2, formula = Surv(mdex) ~ group)
+summary(g.uni.cox.ctas2)
+
+wb_data_i1 <- subset(wb_data, imaging = 1)
+
+```
+
 
 To do: 
 -run winbugs NB multivariate
